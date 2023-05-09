@@ -1,0 +1,3 @@
+[submodule "tibia-kill-stats"]
+	path = tibia-kill-stats
+	url = https://github.com/tibiamaps/tibia-kill-stats
