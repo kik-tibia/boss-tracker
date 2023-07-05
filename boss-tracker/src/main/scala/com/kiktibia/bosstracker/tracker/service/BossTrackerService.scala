@@ -16,7 +16,7 @@ class BossTrackerService(
     discordBot: DiscordBot
 ) {
 
-  def handleKilledBossUpdate(today: LocalDate) = {
+  def handleKilledBossUpdate(today: LocalDate): Unit = {
     if (shouldPostKilledUpdate()) {
       println("Posting killed bosses update")
       for
@@ -28,7 +28,7 @@ class BossTrackerService(
     }
   }
 
-  def handlePredictionsUpdate(today: LocalDate, now: ZonedDateTime) = {
+  def handlePredictionsUpdate(today: LocalDate, now: ZonedDateTime): Unit = {
     if (shouldPostPredictionsUpdate(today, now)) {
       println("Posting predictions")
       for
@@ -51,7 +51,7 @@ class BossTrackerService(
 
   private def shouldPostPredictionsUpdate(date: LocalDate, currentTime: ZonedDateTime): Boolean = {
     val lastUpdate = fileIO.getLastPredictionsUpdate()
-    val serverSaveTime = ZonedDateTime.of(date, LocalTime.of(22, 13), ZoneId.of("Europe/Berlin"))
+    val serverSaveTime = ZonedDateTime.of(date, LocalTime.of(10, 0), ZoneId.of("Europe/Berlin"))
     date != lastUpdate && currentTime.isAfter(serverSaveTime)
   }
 }
