@@ -18,18 +18,12 @@ import com.kiktibia.bosstracker.tracker.service.FileIO
 
 class BossPredictor(fileIO: FileIO) {
 
-  def killedBosses(bossStats: List[BossStats]): Either[Error, List[Boss]] = {
-    for
-      dateInfo <- fileIO.getDateInfo()
-      killed = bossStats.filter(_.stats.head.killed > 0).map(_.boss)
-    yield killed
+  def killedBosses(bossStats: List[BossStats]): List[Boss] = {
+    bossStats.filter(_.stats.head.killed > 0).map(_.boss)
   }
 
-  def predictions(bossStats: List[BossStats], date: LocalDate): Either[Error, List[(Boss, List[Chance])]] = {
-    for
-      dateInfo <- fileIO.getDateInfo()
-      chances = bossStats.filterNot(_.boss.predict.contains(false)).map(b => (b.boss, getChances(b, date)))
-    yield chances
+  def predictions(bossStats: List[BossStats], date: LocalDate): List[(Boss, List[Chance])] = {
+    bossStats.filterNot(_.boss.predict.contains(false)).map(b => (b.boss, getChances(b, date)))
   }
 
   private def getChances(bossStats: BossStats, date: LocalDate): List[Chance] = {

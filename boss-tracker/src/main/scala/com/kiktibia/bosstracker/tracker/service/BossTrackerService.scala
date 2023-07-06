@@ -21,7 +21,7 @@ class BossTrackerService(
       println("Posting killed bosses update")
       for
         bd <- fetcher.getAllBossData()
-        killed <- predictor.killedBosses(bd)
+        killed = predictor.killedBosses(bd)
         _ = discordBot.sendKilled(killed, today)
       yield ()
       fileIO.updateDateFile(cfg.file.statsDateFileName, today)
@@ -33,7 +33,7 @@ class BossTrackerService(
       println("Posting predictions")
       for
         bd <- fetcher.getAllBossData()
-        chances <- predictor.predictions(bd, today)
+        chances = predictor.predictions(bd, today)
         _ = discordBot.sendPredictions(chances, today)
       yield ()
       fileIO.updateDateFile(cfg.file.predictionsDateFileName, today)
