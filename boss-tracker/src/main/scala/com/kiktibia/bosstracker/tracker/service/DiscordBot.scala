@@ -27,11 +27,11 @@ class DiscordBot(cfg: Config) {
   jda.awaitReady()
   private val guild: Guild = jda.getGuildById(cfg.bot.guildId)
 
-  def sendKilled(bosses: List[Boss], today: LocalDate): Unit = {
+  def sendKilled(bosses: List[KilledBoss], today: LocalDate): Unit = {
     val killedChannel =
       guild.getTextChannels().asScala.toList.find(_.getName() == cfg.bot.killedChannelName).get
 
-    val killedBossesList = bosses.map(_.emojiName).mkString("\n")
+    val killedBossesList = bosses.map(_.killedString).mkString("\n")
     killedChannel.sendMessage(s"**Bosses killed yesterday (${today.minusDays(1)}):**\n$killedBossesList").queue()
   }
 

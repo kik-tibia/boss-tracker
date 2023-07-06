@@ -6,6 +6,7 @@ import cats.effect.Sync
 import cats.implicits.*
 import cats.syntax.all.*
 import com.kiktibia.bosstracker.tracker.Model.*
+import com.kiktibia.bosstracker.tracker.service.FileIO
 import io.circe.Error
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
@@ -14,12 +15,13 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.temporal.ChronoUnit.DAYS
 import javax.lang.model.element.TypeElement
-import com.kiktibia.bosstracker.tracker.service.FileIO
 
 class BossPredictor(fileIO: FileIO) {
 
-  def killedBosses(bossStats: List[BossStats]): List[Boss] = {
-    bossStats.filter(_.stats.head.killed > 0).map(_.boss)
+  def killedBosses(bossStats: List[BossStats]): List[KilledBoss] = {
+    bossStats.filter(_.stats.head.killed > 0).map { s =>
+      KilledBoss(s.boss, s.stats.head.killed)
+    }
   }
 
   def predictions(bossStats: List[BossStats], date: LocalDate): List[(Boss, List[Chance])] = {

@@ -21,15 +21,12 @@ object Model {
       spawnPoints: Int,
       category: String
   ) {
-    def emojiName: String =
-      s"$categoryToEmoji $name"
-
     def guildstatsName(world: String): String =
       s"[$name](https://guildstats.eu/bosses?world=${world.capitalize}&monsterName=${URLEncoder.encode(raceName.getOrElse(name))})"
 
     def emojiCategory: String = s"$categoryToEmoji $category $categoryToEmoji"
 
-    private def categoryToEmoji: String = category match {
+    def categoryToEmoji: String = category match {
       case "Profitable" => ":moneybag:"
       case "POI" => ":fire:"
       case "Vampire Lords" => ":vampire:"
@@ -41,6 +38,15 @@ object Model {
       case "Varying Spawn" => ":repeat:"
       case "Rookgaard" => ":hatching_chick:"
       case _ => ""
+    }
+  }
+
+  case class KilledBoss(boss: Boss, numberKilled: Int) {
+    def killedString: String = {
+      val nKilledString =
+        if (numberKilled > 1) s"(x$numberKilled)"
+        else ""
+      s"${boss.categoryToEmoji} ${boss.name} $nKilledString"
     }
   }
 
