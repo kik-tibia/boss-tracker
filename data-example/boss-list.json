@@ -43,6 +43,14 @@
       "category": "Profitable"
     },
     {
+      "name": "Yeti",
+      "raceName": "yetis",
+      "windowMin": 18,
+      "windowMax": 25,
+      "spawnPoints": 1,
+      "category": "Profitable"
+    },
+    {
       "name": "Zushuka",
       "windowMin": 19,
       "windowMax": 29,
@@ -151,7 +159,7 @@
       "name": "Fleabringer",
       "windowMin": 4,
       "windowMax": 8,
-      "spawnPoints": 3,
+      "spawnPoints": 4,
       "category": "Zao"
     },
     {
@@ -167,6 +175,14 @@
       "windowMax": 9,
       "spawnPoints": 2,
       "category": "Zao"
+    },
+    {
+      "name": "Arthom The Hunter",
+      "predict": false,
+      "windowMin": 1,
+      "windowMax": 1,
+      "spawnPoints": 1,
+      "category": "Stealth Ring"
     },
     {
       "name": "Barbaria",
@@ -186,6 +202,14 @@
       "name": "General Murius",
       "windowMin": 6,
       "windowMax": 9,
+      "spawnPoints": 1,
+      "category": "Stealth Ring"
+    },
+    {
+      "name": "Oodok Witchmaster",
+      "predict": false,
+      "windowMin": 1,
+      "windowMax": 1,
       "spawnPoints": 1,
       "category": "Stealth Ring"
     },
@@ -301,6 +325,23 @@
       "windowMin": 12,
       "windowMax": 24,
       "spawnPoints": 2,
+      "category": "Other"
+    },
+    {
+      "name": "Mawhawk",
+      "predict": false,
+      "windowMin": 1,
+      "windowMax": 1,
+      "spawnPoints": 1,
+      "category": "Other"
+    },
+    {
+      "name": "Midnight Panther",
+      "raceName": "midnight panthers",
+      "predict": false,
+      "windowMin": 2,
+      "windowMax": 4,
+      "spawnPoints": 1,
       "category": "Other"
     },
     {
