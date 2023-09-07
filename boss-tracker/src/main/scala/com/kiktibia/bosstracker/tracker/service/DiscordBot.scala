@@ -35,9 +35,11 @@ class DiscordBot(cfg: Config) {
     killedChannel.sendMessage(s"**Bosses killed yesterday (${today.minusDays(1)}):**\n$killedBossesList").queue()
   }
 
-  def sendPredictions(chances: List[(Boss, List[Chance])], today: LocalDate): Unit = {
-    val predictionsChannel =
-      guild.getTextChannels().asScala.toList.find(_.getName() == cfg.bot.predictionsChannelName).get
+  def sendPredictions(chances: List[BossChances], today: LocalDate): Unit = {
+    val predictionsHighChannel =
+      guild.getTextChannels().asScala.toList.find(_.getName() == cfg.bot.predictionsHighChannelName).get
+    val predictionsAllChannel =
+      guild.getTextChannels().asScala.toList.find(_.getName() == cfg.bot.predictionsAllChannelName).get
 
     val order = List(
       "Profitable",
@@ -54,26 +56,24 @@ class DiscordBot(cfg: Config) {
       order.indexOf(a) < order.indexOf(b)
     }
 
-    predictionsChannel.sendMessage(s"**Boss predictions for $today**").queue()
+    predictionsAllChannel.sendMessage(s"**All boss predictions for $today**").queue()
     predictions.map(_._2).foreach { p =>
-      predictionsChannel.sendMessageEmbeds(categoryPredictionsEmbed(p)).queue()
+      predictionsAllChannel.sendMessageEmbeds(categoryPredictionsEmbed(p, highOnly = false)).queue()
+    }
+    predictionsHighChannel.sendMessage(s"**High chance boss predictions for $today**").queue()
+    predictions.map(_._2).foreach { p =>
+      predictionsHighChannel.sendMessageEmbeds(categoryPredictionsEmbed(p, highOnly = true)).queue()
     }
 
   }
 
-  private def categoryPredictionsEmbed(chances: List[(Boss, List[Chance])]): MessageEmbed = {
-    val categoryString = chances.head._1.emojiCategory
-    val bossList = chances
-      .filter(_._2.exists(c => c == Chance.Low || c == Chance.High))
-      .map { case (boss, chances) =>
-        val chanceEmojis = chances
-          .map {
-            case Chance.None => ":red_circle:"
-            case Chance.Low => ":yellow_circle:"
-            case Chance.High => ":green_circle:"
-          }
-          .mkString(" ")
-        s"$chanceEmojis ${boss.guildstatsName(cfg.general.world)}"
+  private def categoryPredictionsEmbed(bossChances: List[BossChances], highOnly: Boolean): MessageEmbed = {
+    val categoryString = bossChances.head.boss.emojiCategory
+    val bossList = bossChances
+      .filter(_.chances.exists(c => !highOnly || c.chance == Chance.High))
+      .map { case BossChances(boss, chances) =>
+        val filteredChances = chances.filter(c => !highOnly || c.chance == Chance.High)
+        s"${boss.guildstatsName(cfg.general.world)}${filteredChances.map(_.toPredictionString()).mkString}"
       }
       .mkString("\n")
     new EmbedBuilder()

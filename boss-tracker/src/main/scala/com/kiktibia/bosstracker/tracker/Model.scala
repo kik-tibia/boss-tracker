@@ -41,6 +41,23 @@ object Model {
     }
   }
 
+  case class BossChance(chance: Chance, daysSince: Int, windowMin: Int, windowMax: Option[Int]) {
+    def toPredictionString(): String = {
+      val chanceEmoji = chance match {
+        case Chance.None => ":red_circle:"
+        case Chance.Low => ":yellow_circle:"
+        case Chance.High => ":green_circle:"
+      }
+      val window = windowMax match {
+        case Some(m) => s"($windowMin–$m)"
+        case None => s"($windowMin+)"
+      }
+      s" — $chanceEmoji $daysSince $window"
+    }
+  }
+
+  case class BossChances(boss: Boss, chances: List[BossChance])
+
   case class KilledBoss(boss: Boss, numberKilled: Int) {
     def killedString: String = {
       val nKilledString =

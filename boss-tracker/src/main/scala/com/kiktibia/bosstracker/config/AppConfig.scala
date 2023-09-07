@@ -20,7 +20,8 @@ final case class BotConfig(
     token: String,
     guildId: String,
     killedChannelName: String,
-    predictionsChannelName: String
+    predictionsHighChannelName: String,
+    predictionsAllChannelName: String
 )
 
 final case class Config(
@@ -46,7 +47,8 @@ object AppConfig {
     env("TOKEN").as[String],
     env("GUILD_ID").as[String],
     env("KILLED_CHANNEL_NAME").as[String],
-    env("PREDICTIONS_CHANNEL_NAME").as[String]
+    env("PREDICTIONS_HIGH_CHANNEL_NAME").as[String],
+    env("PREDICTIONS_ALL_CHANNEL_NAME").as[String]
   ).parMapN(BotConfig.apply)
 
   val config: ConfigValue[Effect, Config] = (generalConfig, fileConfig, botConfig).parMapN(Config.apply)

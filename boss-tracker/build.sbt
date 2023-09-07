@@ -1,16 +1,13 @@
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := "1.1.0-SNAPSHOT"
 
 ThisBuild / scalaVersion := "3.2.2"
 
-lazy val root = (project in file("."))
-  .settings(
-    name := "boss-tracker"
-  )
+name := "boss-tracker"
+version := "1.0.0"
 
 enablePlugins(DockerPlugin)
 enablePlugins(JavaAppPackaging)
 dockerExposedPorts += 443
-dockerAlias := DockerAlias(None, None, "boss-tracker", None)
 Compile / mainClass := Some("com.kiktibia.bosstracker.tracker.Main")
 
 scalacOptions ++= Seq(

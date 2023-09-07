@@ -24,18 +24,19 @@ class BossPredictor(fileIO: FileIO) {
     }
   }
 
-  def predictions(bossStats: List[BossStats], date: LocalDate): List[(Boss, List[Chance])] = {
-    bossStats.filterNot(_.boss.predict.contains(false)).map(b => (b.boss, getChances(b, date)))
+  def predictions(bossStats: List[BossStats], date: LocalDate): List[BossChances] = {
+    bossStats.filterNot(_.boss.predict.contains(false)).map(b => BossChances(b.boss, getChances(b, date)))
   }
 
-  private def getChances(bossStats: BossStats, date: LocalDate): List[Chance] = {
+  private def getChances(bossStats: BossStats, date: LocalDate): List[BossChance] = {
     val min = bossStats.boss.windowMin
     val max = bossStats.boss.windowMax
     if (bossStats.boss.spawnPoints == 1) {
       bossStats.stats.find(_.killed > 0) match {
         case Some(lastKilled) =>
           List(getChance(date, lastKilled.date, min, max))
-        case None => List(Chance.None)
+        case None =>
+          List(BossChance(Chance.None, 0, min, Some(max))) // Not ideal, but should never happen on old servers
       }
     } else {
       val daysKilled = bossStats.stats.flatMap { dayStats =>
@@ -50,17 +51,28 @@ class BossPredictor(fileIO: FileIO) {
     }
   }
 
-  private def getChance(date: LocalDate, lastKilled: LocalDate, min: Int, max: Int): Chance = {
-    val daysSinceKilled = DAYS.between(lastKilled, date)
+  private def getChance(date: LocalDate, lastKilled: LocalDate, min: Int, max: Int): BossChance = {
+    val daysSinceKilled = DAYS.between(lastKilled, date).toInt
     val nStartWindowsHigh = daysSinceKilled / min
     val nEndWindowsHigh = (daysSinceKilled - 1) / max + 1
     val nStartWindowsLow = daysSinceKilled / (min - 1)
     val nEndWindowsLow = (daysSinceKilled - 1) / (max + 1) + 1
     val isHighChance = nStartWindowsHigh >= nEndWindowsHigh
     val isLowChance = nStartWindowsLow >= nEndWindowsLow
-    if (isHighChance) Chance.High
-    else if (isLowChance) Chance.Low
-    else Chance.None
+
+    val chance =
+      if (isHighChance) Chance.High
+      else if (isLowChance) Chance.Low
+      else Chance.None
+
+    val startOfEndless = (max - 1) / (max - min) * min
+    println(startOfEndless)
+
+    val windowMin = math.min(math.max(nStartWindowsHigh, 1) * min, startOfEndless)
+    val windowMax = math.max(nStartWindowsHigh, 1) * max
+    val windowMaxOpt = if (windowMin >= startOfEndless) None else Some(windowMax)
+
+    BossChance(chance, daysSinceKilled, windowMin, windowMaxOpt)
   }
 
 }
