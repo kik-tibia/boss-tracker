@@ -66,7 +66,6 @@ class BossPredictor(fileIO: FileIO) {
       else Chance.None
 
     val startOfEndless = (max - 1) / (max - min) * min
-    println(startOfEndless)
 
     val windowMin = math.min(math.max(nStartWindowsHigh, 1) * min, startOfEndless)
     val windowMax = math.max(nStartWindowsHigh, 1) * max
