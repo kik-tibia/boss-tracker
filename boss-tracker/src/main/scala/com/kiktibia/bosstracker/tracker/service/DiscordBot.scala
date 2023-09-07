@@ -69,13 +69,19 @@ class DiscordBot(cfg: Config) {
 
   private def categoryPredictionsEmbed(bossChances: List[BossChances], highOnly: Boolean): MessageEmbed = {
     val categoryString = bossChances.head.boss.emojiCategory
-    val bossList = bossChances
+    val bossesToPost = bossChances
       .filter(_.chances.exists(c => !highOnly || c.chance == Chance.High))
-      .map { case BossChances(boss, chances) =>
-        val filteredChances = chances.filter(c => !highOnly || c.chance == Chance.High)
-        s"${boss.guildstatsName(cfg.general.world)}${filteredChances.map(_.toPredictionString()).mkString}"
-      }
-      .mkString("\n")
+
+    val bossList =
+      if (bossesToPost.isEmpty) "No high chance bosses in this category"
+      else
+        bossesToPost
+          .map { case BossChances(boss, chances) =>
+            val filteredChances = chances.filter(c => !highOnly || c.chance == Chance.High)
+            s"${boss.guildstatsName(cfg.general.world)}${filteredChances.map(_.toPredictionString()).mkString}"
+          }
+          .mkString("\n")
+
     new EmbedBuilder()
       .setTitle(s"**$categoryString**")
       .setDescription(bossList)
