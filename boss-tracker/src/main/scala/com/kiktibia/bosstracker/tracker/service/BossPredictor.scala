@@ -65,13 +65,17 @@ class BossPredictor(fileIO: FileIO) {
       else if (isLowChance) Chance.Low
       else Chance.None
 
-    val startOfEndless = (max - 1) / (max - min) * min
+    if (daysSinceKilled <= max) // Special case to always show the first window
+      BossChance(chance, daysSinceKilled, min, Some(max))
+    else {
+      val startOfEndless = (max - 1) / (max - min) * min
 
-    val windowMin = math.min(math.max(nStartWindowsHigh, 1) * min, startOfEndless)
-    val windowMax = math.max(nStartWindowsHigh, 1) * max
-    val windowMaxOpt = if (windowMin >= startOfEndless) None else Some(windowMax)
+      val windowMin = math.min(math.max(nStartWindowsHigh, 1) * min, startOfEndless)
+      val windowMax = math.max(nStartWindowsHigh, 1) * max
+      val windowMaxOpt = if (windowMin >= startOfEndless) None else Some(windowMax)
 
-    BossChance(chance, daysSinceKilled, windowMin, windowMaxOpt)
+      BossChance(chance, daysSinceKilled, windowMin, windowMaxOpt)
+    }
   }
 
 }

@@ -3,7 +3,7 @@ ThisBuild / version := "1.1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "3.2.2"
 
 name := "boss-tracker"
-version := "1.0.1"
+version := "1.1.0"
 
 enablePlugins(DockerPlugin)
 enablePlugins(JavaAppPackaging)
