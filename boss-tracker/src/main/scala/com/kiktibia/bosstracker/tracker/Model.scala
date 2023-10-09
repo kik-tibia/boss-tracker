@@ -83,11 +83,6 @@ object Model {
       last_week_killed: Int
   )
 
-  case class Information(
-      api_version: Int,
-      timestamp: String
-  )
-
   case class Total(
       last_day_players_killed: Int,
       last_day_killed: Int,
@@ -99,6 +94,16 @@ object Model {
       world: String,
       entries: Seq[Entry],
       total: Total
+  )
+
+  case class Api(version: Int, release: String, commit: String)
+  case class Status(http_code: Int)
+
+  case class Information(
+      api_version: Option[Int],
+      api: Option[Api],
+      status: Option[Status],
+      timestamp: String
   )
 
   case class KillStatsDay(
