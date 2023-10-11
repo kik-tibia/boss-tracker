@@ -264,6 +264,15 @@
       "category": "Stealth Ring"
     },
     {
+      "name": "Albino Dragon",
+      "raceName": "albino dragons",
+      "predict": false,
+      "windowMin": 1,
+      "windowMax": 1,
+      "spawnPoints": 1,
+      "category": "Other"
+    },
+    {
       "name": "Captain Jones",
       "windowMin": 6,
       "windowMax": 10,
