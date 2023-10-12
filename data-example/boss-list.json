@@ -22,9 +22,23 @@
       "category": "Profitable"
     },
     {
+      "name": "Omrafir",
+      "windowMin": 14,
+      "windowMax": 28,
+      "spawnPoints": 1,
+      "category": "Profitable"
+    },
+    {
       "name": "Shlorg",
       "windowMin": 13,
       "windowMax": 29,
+      "spawnPoints": 1,
+      "category": "Profitable"
+    },
+    {
+      "name": "The Pale Count",
+      "windowMin": 16,
+      "windowMax": 30,
       "spawnPoints": 1,
       "category": "Profitable"
     },
