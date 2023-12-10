@@ -1,6 +1,48 @@
 {
   "bosses": [
     {
+      "name": "Ferumbras",
+      "windowMin": 161,
+      "windowMax": 175,
+      "spawnPoints": 1,
+      "category": "World Bosses"
+    },
+    {
+      "name": "Ghazbaran",
+      "windowMin": 161,
+      "windowMax": 175,
+      "spawnPoints": 1,
+      "category": "World Bosses"
+    },
+    {
+      "name": "Morgaroth",
+      "windowMin": 168,
+      "windowMax": 175,
+      "spawnPoints": 1,
+      "category": "World Bosses"
+    },
+    {
+      "name": "Morshabaal",
+      "windowMin": 154,
+      "windowMax": 175,
+      "spawnPoints": 1,
+      "category": "World Bosses"
+    },
+    {
+      "name": "Orshabaal",
+      "windowMin": 154,
+      "windowMax": 175,
+      "spawnPoints": 1,
+      "category": "World Bosses"
+    },
+    {
+      "name": "The Abomination",
+      "windowMin": 154,
+      "windowMax": 175,
+      "spawnPoints": 1,
+      "category": "World Bosses"
+    },
+    {
       "name": "Furyosa",
       "windowMin": 12,
       "windowMax": 28,

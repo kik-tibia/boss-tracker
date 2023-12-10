@@ -35,16 +35,17 @@ class BossDataFetcher(fileIO: FileIO) {
 
     bossList.bosses.map { boss =>
       val bossName: String = boss.raceName.getOrElse(boss.name)
-      val killedDays = killStatsDays.filter {
+      val seenDays = killStatsDays.filter {
         _.killstatistics.entries.exists { e =>
-          e.race == bossName && e.last_day_killed > 0
+          e.race == bossName && (e.last_day_killed > 0 || e.last_day_players_killed > 0)
         }
       }
-      val stats = killedDays
-        .map { kd =>
+      val stats = seenDays
+        .map { sd =>
           DayStats(
-            LocalDate.parse(kd.information.timestamp, DateTimeFormatter.ISO_DATE_TIME).minusDays(1),
-            kd.killstatistics.entries.find(_.race == bossName).map(_.last_day_killed).getOrElse(0)
+            LocalDate.parse(sd.information.timestamp, DateTimeFormatter.ISO_DATE_TIME).minusDays(1),
+            sd.killstatistics.entries.find(_.race == bossName).map(_.last_day_killed).getOrElse(0),
+            sd.killstatistics.entries.find(_.race == bossName).map(_.last_day_players_killed).getOrElse(0)
           )
         }
       BossStats(boss, fillBlankDays(dateInfo.startDate, LocalDate.now().minusDays(1), stats))
@@ -58,7 +59,7 @@ class BossDataFetcher(fileIO: FileIO) {
     dates.map { case date =>
       stats.find(_.date == date) match {
         case Some(stat) => stat
-        case None => DayStats(date, 0)
+        case None => DayStats(date, 0, 0)
       }
     }
   }

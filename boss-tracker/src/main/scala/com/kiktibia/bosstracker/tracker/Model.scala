@@ -8,7 +8,7 @@ object Model {
   enum Chance:
     case None, Low, High
 
-  case class DayStats(date: LocalDate, killed: Int)
+  case class DayStats(date: LocalDate, killed: Int, playersKilled: Int)
 
   case class BossStats(boss: Boss, stats: List[DayStats])
 
@@ -27,6 +27,7 @@ object Model {
     def emojiCategory: String = s"$categoryToEmoji $category $categoryToEmoji"
 
     def categoryToEmoji: String = category match {
+      case "World Bosses" => ":earth_africa:"
       case "Profitable" => ":moneybag:"
       case "POI" => ":fire:"
       case "Vampire Lords" => ":vampire:"

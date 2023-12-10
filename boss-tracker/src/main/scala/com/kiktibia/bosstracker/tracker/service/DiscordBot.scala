@@ -42,6 +42,7 @@ class DiscordBot(cfg: Config) {
       guild.getTextChannels().asScala.toList.find(_.getName() == cfg.bot.predictionsAllChannelName).get
 
     val order = List(
+      "World Bosses",
       "Profitable",
       "POI",
       "Vampire Lords",

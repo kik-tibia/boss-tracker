@@ -32,20 +32,20 @@ class BossPredictor(fileIO: FileIO) {
     val min = bossStats.boss.windowMin
     val max = bossStats.boss.windowMax
     if (bossStats.boss.spawnPoints == 1) {
-      bossStats.stats.find(_.killed > 0) match {
-        case Some(lastKilled) =>
-          List(getChance(date, lastKilled.date, min, max))
+      bossStats.stats.find(s => s.killed > 0 || s.playersKilled > 0) match {
+        case Some(lastSeen) =>
+          List(getChance(date, lastSeen.date, min, max))
         case None =>
           List(BossChance(Chance.None, 0, min, Some(max))) // Not ideal, but should never happen on old servers
       }
     } else {
-      val daysKilled = bossStats.stats.flatMap { dayStats =>
-        if (dayStats.killed == 0) Nil
+      val daysSeen = bossStats.stats.flatMap { dayStats =>
+        if (dayStats.killed == 0 && dayStats.playersKilled == 0) Nil
         else if (dayStats.killed > 1)
           List.fill(dayStats.killed)(dayStats.date)
         else List(dayStats.date)
       }
-      daysKilled.take(bossStats.boss.spawnPoints).map { killedDate =>
+      daysSeen.take(bossStats.boss.spawnPoints).map { killedDate =>
         getChance(date, killedDate, min, max)
       }
     }
