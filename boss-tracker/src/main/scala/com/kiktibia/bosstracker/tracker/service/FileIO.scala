@@ -75,7 +75,12 @@ class FileIO(cfg: Config) extends CirceCodecs {
   private def getAllStatsFiles(): List[Path] = {
     val path = Paths.get(cfg.file.statsRepoPath, "data", cfg.general.world)
     val missingDataPath = Paths.get(cfg.file.missingDataPath, cfg.general.world)
-    (pathToList(path) ::: pathToList(missingDataPath))
+    val dataFiles = pathToList(path)
+    val missingDataFiles = pathToList(missingDataPath).filterNot { p =>
+      // Don't use mising data file if tibia kill stats file exists of the same date
+      dataFiles.map(_.getFileName()).contains(p.getFileName())
+    }
+    (dataFiles ::: missingDataFiles)
       .filterNot(p => p.toFile.getName == "latest.json")
   }
 
