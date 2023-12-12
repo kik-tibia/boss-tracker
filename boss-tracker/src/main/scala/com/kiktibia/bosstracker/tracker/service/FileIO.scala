@@ -17,6 +17,7 @@ import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters.*
 
 import sys.process.*
+import java.nio.file.Path
 
 class FileIO(cfg: Config) extends CirceCodecs {
 
@@ -26,13 +27,7 @@ class FileIO(cfg: Config) extends CirceCodecs {
   }
 
   def parseAllHistoricStats(): List[KillStatsDay] = {
-    val path = Paths.get(cfg.file.statsRepoPath, "data", cfg.general.world)
-    val files = Files
-      .list(path)
-      .iterator()
-      .asScala
-      .toList
-      .filterNot(p => p.toFile.getName == "latest.json")
+    val files = getAllStatsFiles()
 
     files.map(f => new String(Files.readAllBytes(f))).map(parser.decode[KillStatsDay]).flatMap(_.toOption)
   }
@@ -64,9 +59,24 @@ class FileIO(cfg: Config) extends CirceCodecs {
   }
 
   def parseLatestStats(): Either[Error, KillStatsDay] = {
-    val path = Paths.get(cfg.file.statsRepoPath, "data", cfg.general.world, "latest.json")
+    val path = getAllStatsFiles().sortBy(_.getFileName()).reverse.head
     val jsonString: String = new String(Files.readAllBytes(path))
     parser.decode[KillStatsDay](jsonString)
+  }
+
+  private def pathToList(path: Path): List[Path] = {
+    Files
+      .list(path)
+      .iterator()
+      .asScala
+      .toList
+  }
+
+  private def getAllStatsFiles(): List[Path] = {
+    val path = Paths.get(cfg.file.statsRepoPath, "data", cfg.general.world)
+    val missingDataPath = Paths.get(cfg.file.missingDataPath, cfg.general.world)
+    (pathToList(path) ::: pathToList(missingDataPath))
+      .filterNot(p => p.toFile.getName == "latest.json")
   }
 
 }

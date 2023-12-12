@@ -13,7 +13,8 @@ final case class FileConfig(
     predictionsDateFileName: String,
     bossListFileName: String,
     dateInfoFileName: String,
-    statsRepoPath: String
+    statsRepoPath: String,
+    missingDataPath: String
 )
 
 final case class BotConfig(
@@ -40,7 +41,8 @@ object AppConfig {
     env("PREDICTIONS_DATE_FILE").as[String],
     env("BOSS_LIST_FILE").as[String],
     env("DATE_INFO_FILE").as[String],
-    env("STATS_REPO_PATH").as[String]
+    env("STATS_REPO_PATH").as[String],
+    env("MISSING_DATA_PATH").as[String]
   ).parMapN(FileConfig.apply)
 
   private val botConfig: ConfigValue[Effect, BotConfig] = (
