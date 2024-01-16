@@ -30,7 +30,7 @@ class BossDataFetcher(fileIO: FileIO) {
 
   private def getBossData(bossList: BossList, dateInfo: DateInfo): List[BossStats] = {
     val killStatsDays: List[KillStatsDay] = fileIO
-      .parseAllHistoricStats()
+      .parseAllHistoricStats(bossList)
       .sortBy(_.information.timestamp)
 
     bossList.bosses.map { boss =>

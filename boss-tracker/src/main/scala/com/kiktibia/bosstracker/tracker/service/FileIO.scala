@@ -26,10 +26,13 @@ class FileIO(cfg: Config) extends CirceCodecs {
     parser.decode[BossList](jsonString)
   }
 
-  def parseAllHistoricStats(): List[KillStatsDay] = {
-    val files = getAllStatsFiles()
-
-    files.map(f => new String(Files.readAllBytes(f))).map(parser.decode[KillStatsDay]).flatMap(_.toOption)
+  def parseAllHistoricStats(bossList: BossList): List[KillStatsDay] = {
+    getAllStatsFiles()
+      .map(f => new String(Files.readAllBytes(f)))
+      .map { s =>
+        parser.decode[KillStatsDay](s).map(ksd => removeIrrelevantEntries(ksd, bossList))
+      }
+      .flatMap(_.toOption)
   }
 
   def getDateInfo(): Either[Error, DateInfo] = {
@@ -62,6 +65,14 @@ class FileIO(cfg: Config) extends CirceCodecs {
     val path = getAllStatsFiles().sortBy(_.getFileName()).reverse.head
     val jsonString: String = new String(Files.readAllBytes(path))
     parser.decode[KillStatsDay](jsonString)
+  }
+
+  // Removes any entries in the KillStatsDay that are not in the BossList
+  // (e.g. most of the regular creatures) to use less memory
+  private def removeIrrelevantEntries(ksd: KillStatsDay, bossList: BossList): KillStatsDay = {
+    val updatedEntries = ksd.killstatistics.entries
+      .filter(e => bossList.bosses.exists(b => b.raceName.getOrElse(b.name) == e.race))
+    ksd.copy(killstatistics = ksd.killstatistics.copy(entries = updatedEntries))
   }
 
   private def pathToList(path: Path): List[Path] = {
