@@ -69,6 +69,12 @@ class FileIO(cfg: Config) extends CirceCodecs {
     parser.decode[KillStatsDay](jsonString)
   }
 
+  def parseRaidData(): String = {
+    val path = Paths.get(cfg.file.raidDataFile)
+    val jsonString: String = new String(Files.readAllBytes(path))
+    jsonString
+  }
+
   // Removes any entries in the KillStatsDay that are not in the BossList
   // (e.g. most of the regular creatures) to use less memory
   private def removeIrrelevantEntries(ksd: KillStatsDay, bossList: BossList): KillStatsDay = {

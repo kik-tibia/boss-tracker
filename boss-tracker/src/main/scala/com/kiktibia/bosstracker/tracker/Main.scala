@@ -43,6 +43,8 @@ object Main extends IOApp {
           fileIO.updateBossStatsRepo()
           service.handleKilledBossUpdate(today)
           service.handlePredictionsUpdate(today, now)
+          // service.handleMwcUpdate()
+          service.handleRaidsUpdate()
         }
       }
       .compile

@@ -7,6 +7,7 @@ import cats.implicits.*
 import cats.syntax.all.*
 import com.kiktibia.bosstracker.config.Config
 import com.kiktibia.bosstracker.tracker.Model.*
+import com.kiktibia.bosstracker.tracker.ObsModel.Raid
 import io.circe.Error
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.JDABuilder
@@ -68,6 +69,21 @@ class DiscordBot(cfg: Config) {
 
   }
 
+  def sendMwc(msg: String): Unit = {
+    val mwcChannel =
+      guild.getTextChannels().asScala.toList.find(_.getName() == cfg.bot.mwcChannelName).get
+    mwcChannel.sendMessage(msg).queue()
+  }
+
+  def sendRaids(raids: List[Raid]): Unit = {
+    val raidChannel =
+      guild.getTextChannels().asScala.toList.find(_.getName() == cfg.bot.raidChannelName).get
+    println(raids)
+    raids.foreach { raid =>
+      raidChannel.sendMessageEmbeds(raidEmbed(raid)).queue()
+    }
+  }
+
   private def categoryPredictionsEmbed(bossChances: List[BossChances], highOnly: Boolean): MessageEmbed = {
     val categoryString = bossChances.head.boss.emojiCategory
     val bossesToPost = bossChances
@@ -87,6 +103,15 @@ class DiscordBot(cfg: Config) {
       .setTitle(s"**$categoryString**")
       .setDescription(bossList)
       .setColor(6386874)
+      .build()
+  }
+
+  private def raidEmbed(raid: Raid): MessageEmbed = {
+    new EmbedBuilder()
+      .setTitle(raid.category)
+      .setDescription(
+        s"area: ${raid.areaName} - ${raid.subareaName}\nraid: ${raid.raidTypeId}\nstart date: ${raid.startDate.toString()}"
+      )
       .build()
   }
 }
