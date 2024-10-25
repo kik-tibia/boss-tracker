@@ -14,7 +14,8 @@ final case class FileConfig(
     bossListFileName: String,
     dateInfoFileName: String,
     statsRepoPath: String,
-    missingDataPath: String
+    missingDataPath: String,
+    raidDataFile: String
 )
 
 final case class BotConfig(
@@ -22,7 +23,9 @@ final case class BotConfig(
     guildId: String,
     killedChannelName: String,
     predictionsHighChannelName: String,
-    predictionsAllChannelName: String
+    predictionsAllChannelName: String,
+    mwcChannelName: String,
+    raidChannelName: String
 )
 
 final case class Config(
@@ -42,7 +45,8 @@ object AppConfig {
     env("BOSS_LIST_FILE").as[String],
     env("DATE_INFO_FILE").as[String],
     env("STATS_REPO_PATH").as[String],
-    env("MISSING_DATA_PATH").as[String]
+    env("MISSING_DATA_PATH").as[String],
+    env("RAID_DATA_FILE").as[String],
   ).parMapN(FileConfig.apply)
 
   private val botConfig: ConfigValue[Effect, BotConfig] = (
@@ -50,7 +54,9 @@ object AppConfig {
     env("GUILD_ID").as[String],
     env("KILLED_CHANNEL_NAME").as[String],
     env("PREDICTIONS_HIGH_CHANNEL_NAME").as[String],
-    env("PREDICTIONS_ALL_CHANNEL_NAME").as[String]
+    env("PREDICTIONS_ALL_CHANNEL_NAME").as[String],
+    env("MWC_CHANNEL_NAME").as[String],
+    env("RAID_CHANNEL_NAME").as[String]
   ).parMapN(BotConfig.apply)
 
   val config: ConfigValue[Effect, Config] = (generalConfig, fileConfig, botConfig).parMapN(Config.apply)

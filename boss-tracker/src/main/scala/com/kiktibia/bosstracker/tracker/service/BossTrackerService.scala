@@ -7,6 +7,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.ZoneId
 import java.time.LocalTime
+import com.kiktibia.bosstracker.tracker.ObsModel.Raid
 
 class BossTrackerService(
     cfg: Config,
@@ -38,6 +39,25 @@ class BossTrackerService(
       yield ()
       fileIO.updateDateFile(cfg.file.predictionsDateFileName, today)
     }
+  }
+
+  def handleMwcUpdate(): Unit = {
+    println("handling mwc")
+    discordBot.sendMwc("hello world")
+  }
+
+  def handleRaidsUpdate(): Unit = {
+    import com.kiktibia.bosstracker.tracker.CirceCodecs
+    import io.circe.*
+    import io.circe.generic.auto.*
+    import io.circe.parser.*
+
+    println("handling raids")
+    val raidJson: String = fileIO.parseRaidData()
+    val maybeParsed = parser.decode[List[Raid]](raidJson)
+    val raidData: List[Raid] = maybeParsed.getOrElse(Nil)
+
+    discordBot.sendRaids(raidData)
   }
 
   private def shouldPostKilledUpdate(): Boolean = {
