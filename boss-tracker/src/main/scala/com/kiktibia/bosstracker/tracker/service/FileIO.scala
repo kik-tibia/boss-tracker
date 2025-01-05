@@ -41,7 +41,9 @@ class FileIO(cfg: Config) extends CirceCodecs {
   }
 
   def updateBossStatsRepo() = {
-    Process(s"git pull", Some(new java.io.File(cfg.file.statsRepoPath))).!
+    // Doing this instead of a git pull because sometimes the repo is force pushed to and diverges from the local branch
+    Process(Seq("git", "fetch"), Some(new java.io.File(cfg.file.statsRepoPath))).!
+    Process(Seq("git", "reset", "--hard", "origin/main"), Some(new java.io.File(cfg.file.statsRepoPath))).!
   }
 
   def getLastKilledUpdate(): LocalDate =
