@@ -17,6 +17,8 @@ object Main extends IOApp {
 
   given Logger[IO] = Slf4jLogger.getLogger[IO]
 
+  override protected def blockedThreadDetectionEnabled = true
+
   override def run(args: List[String]): IO[ExitCode] = {
     for
       cfg <- AppConfig.config.load[IO]
