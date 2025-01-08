@@ -18,6 +18,7 @@ import scala.jdk.CollectionConverters.*
 
 import sys.process.*
 import java.nio.file.Path
+import java.time.LocalDateTime
 
 class FileIO(cfg: Config) extends CirceCodecs {
 
@@ -67,6 +68,24 @@ class FileIO(cfg: Config) extends CirceCodecs {
     val path = getAllStatsFiles().sortBy(_.getFileName()).reverse.head
     val jsonString: String = new String(Files.readAllBytes(path))
     parser.decode[KillStatsDay](jsonString)
+  }
+
+  def getTimeOfLastMwcPost(): LocalDateTime =
+    LocalDateTime.parse(
+      new String(Files.readAllBytes(Paths.get(cfg.file.lastMwcPostFileName))).trim(),
+      DateTimeFormatter.ISO_LOCAL_DATE_TIME
+    )
+
+  def getTimeOfLastMwcChange(): LocalDateTime = {
+    val mwcHistoryFiles = pathToList(Paths.get(cfg.file.mwcHistoryPath))
+    LocalDateTime.parse(
+      mwcHistoryFiles.map(_.getFileName()).max.toString().split("\\.").head
+    )
+  }
+
+  def updateLastMwcPost(date: LocalDateTime): Unit = {
+    val path = Paths.get(cfg.file.lastMwcPostFileName)
+    Files.write(path, date.toString().getBytes())
   }
 
   def parseRaidData(): String = {

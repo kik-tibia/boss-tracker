@@ -31,7 +31,8 @@ object Main extends IOApp {
     val fetcher = new BossDataFetcher(fileIO)
     val predictor = new BossPredictor(fileIO)
     val discordBot = new DiscordBot(cfg)
-    val service = new BossTrackerService(cfg, fileIO, fetcher, predictor, discordBot)
+    val bossTrackerService = new BossTrackerService(cfg, fileIO, fetcher, predictor, discordBot)
+    val obsService = new ObsService(cfg, fileIO, discordBot)
 
     Stream
       .fixedRateStartImmediately[IO](30.seconds)
@@ -40,11 +41,11 @@ object Main extends IOApp {
           println("Running stream")
           val today = LocalDate.now()
           val now = ZonedDateTime.now()
-          fileIO.updateBossStatsRepo()
-          service.handleKilledBossUpdate(today)
-          service.handlePredictionsUpdate(today, now)
-          // service.handleMwcUpdate()
-          service.handleRaidsUpdate()
+          // fileIO.updateBossStatsRepo()
+          // bossTrackerService.handleKilledBossUpdate(today)
+          // bossTrackerService.handlePredictionsUpdate(today, now)
+          obsService.handleMwcUpdate()
+          // obsService.handleRaidsUpdate()
         }
       }
       .compile

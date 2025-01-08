@@ -41,25 +41,6 @@ class BossTrackerService(
     }
   }
 
-  def handleMwcUpdate(): Unit = {
-    println("handling mwc")
-    discordBot.sendMwc("hello world")
-  }
-
-  def handleRaidsUpdate(): Unit = {
-    import com.kiktibia.bosstracker.tracker.CirceCodecs
-    import io.circe.*
-    import io.circe.generic.auto.*
-    import io.circe.parser.*
-
-    println("handling raids")
-    val raidJson: String = fileIO.parseRaidData()
-    val maybeParsed = parser.decode[List[Raid]](raidJson)
-    val raidData: List[Raid] = maybeParsed.getOrElse(Nil)
-
-    discordBot.sendRaids(raidData)
-  }
-
   private def shouldPostKilledUpdate(): Boolean = {
     val lastUpdate = fileIO.getLastKilledUpdate()
     val latestStatsDate = fileIO

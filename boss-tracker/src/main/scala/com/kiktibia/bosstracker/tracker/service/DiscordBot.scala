@@ -17,6 +17,7 @@ import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import javax.lang.model.element.TypeElement
@@ -69,7 +70,9 @@ class DiscordBot(cfg: Config) {
 
   }
 
-  def sendMwc(msg: String): Unit = {
+  def sendMwc(dateTime: LocalDateTime): Unit = {
+    val time = dateTime.format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+    val msg = s"MWC change detected: `$time`"
     val mwcChannel =
       guild.getTextChannels().asScala.toList.find(_.getName() == cfg.bot.mwcChannelName).get
     mwcChannel.sendMessage(msg).queue()

@@ -15,6 +15,8 @@ final case class FileConfig(
     dateInfoFileName: String,
     statsRepoPath: String,
     missingDataPath: String,
+    lastMwcPostFileName: String,
+    mwcHistoryPath: String,
     raidDataFile: String
 )
 
@@ -46,6 +48,8 @@ object AppConfig {
     env("DATE_INFO_FILE").as[String],
     env("STATS_REPO_PATH").as[String],
     env("MISSING_DATA_PATH").as[String],
+    env("LAST_MWC_POST_FILE").as[String],
+    env("MWC_HISTORY_PATH").as[String],
     env("RAID_DATA_FILE").as[String],
   ).parMapN(FileConfig.apply)
 
