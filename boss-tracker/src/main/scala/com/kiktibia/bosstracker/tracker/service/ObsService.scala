@@ -38,7 +38,7 @@ class ObsService(
         .format(DateTimeFormatter.ISO_LOCAL_DATE)
       val mwcDetails: String = fileIO.getMwcDetails()
       val mwcDetailsMessage: String =
-        s"**Mini world changes changes for $mwcDateString:**\n${parseMwcJson(mwcDetails)}"
+        s"**Mini world changes for $mwcDateString:**\n${parseMwcJson(mwcDetails)}"
 
       discordBot.sendMwcDetails(mwcDetailsMessage)
 
