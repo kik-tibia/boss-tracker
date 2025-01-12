@@ -11,14 +11,15 @@ import io.circe.generic.auto.*
 import io.circe.parser.*
 
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters.*
 
 import sys.process.*
-import java.nio.file.Path
-import java.time.LocalDateTime
 
 class FileIO(cfg: Config) extends CirceCodecs {
 
@@ -70,22 +71,29 @@ class FileIO(cfg: Config) extends CirceCodecs {
     parser.decode[KillStatsDay](jsonString)
   }
 
-  def getTimeOfLastMwcPost(): LocalDateTime =
-    LocalDateTime.parse(
+  def getTimeOfLastMwcPost(): ZonedDateTime =
+    ZonedDateTime.parse(
       new String(Files.readAllBytes(Paths.get(cfg.file.lastMwcPostFileName))).trim(),
-      DateTimeFormatter.ISO_LOCAL_DATE_TIME
+      DateTimeFormatter.ISO_DATE_TIME
     )
 
-  def getTimeOfLastMwcChange(): LocalDateTime = {
+  def getTimeOfLastMwcChange(): ZonedDateTime = {
     val mwcHistoryFiles = pathToList(Paths.get(cfg.file.mwcHistoryPath))
-    LocalDateTime.parse(
-      mwcHistoryFiles.map(_.getFileName()).max.toString().split("\\.").head
+    ZonedDateTime.parse(
+      mwcHistoryFiles.map(_.getFileName()).max.toString().split("\\.").head,
+      DateTimeFormatter.ISO_DATE_TIME
     )
   }
 
-  def updateLastMwcPost(date: LocalDateTime): Unit = {
+  def getMwcDetails(): String = {
+    val mwcHistoryFiles = pathToList(Paths.get(cfg.file.mwcHistoryPath))
+    val latestFile = mwcHistoryFiles.maxBy(_.getFileName())
+    new String(Files.readAllBytes(latestFile))
+  }
+
+  def updateLastMwcPost(date: ZonedDateTime): Unit = {
     val path = Paths.get(cfg.file.lastMwcPostFileName)
-    Files.write(path, date.toString().getBytes())
+    Files.write(path, date.format(DateTimeFormatter.ISO_DATE_TIME).getBytes())
   }
 
   def parseRaidData(): String = {

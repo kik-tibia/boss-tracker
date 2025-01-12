@@ -22,12 +22,12 @@ final case class FileConfig(
 
 final case class BotConfig(
     token: String,
-    guildId: String,
-    killedChannelName: String,
-    predictionsHighChannelName: String,
-    predictionsAllChannelName: String,
-    mwcChannelName: String,
-    raidChannelName: String
+    killedChannelNames: List[String],
+    predictionsHighChannelNames: List[String],
+    predictionsAllChannelNames: List[String],
+    mwcTimingChannelNames: List[String],
+    mwcDetailsChannelNames: List[String],
+    raidChannelNames: List[String]
 )
 
 final case class Config(
@@ -37,6 +37,9 @@ final case class Config(
 )
 
 object AppConfig {
+  implicit private val listConfigDecoder: ConfigDecoder[String, List[String]] =
+    ConfigDecoder[String, String].map(_.split(",").map(_.trim).filter(_.nonEmpty).toList)
+
   private val generalConfig: ConfigValue[Effect, GeneralConfig] = (
     env("WORLD").as[String]
   ).map(GeneralConfig.apply)
@@ -55,12 +58,12 @@ object AppConfig {
 
   private val botConfig: ConfigValue[Effect, BotConfig] = (
     env("TOKEN").as[String],
-    env("GUILD_ID").as[String],
-    env("KILLED_CHANNEL_NAME").as[String],
-    env("PREDICTIONS_HIGH_CHANNEL_NAME").as[String],
-    env("PREDICTIONS_ALL_CHANNEL_NAME").as[String],
-    env("MWC_CHANNEL_NAME").as[String],
-    env("RAID_CHANNEL_NAME").as[String]
+    env("KILLED_CHANNEL_NAMES").as[List[String]],
+    env("PREDICTIONS_HIGH_CHANNEL_NAMES").as[List[String]],
+    env("PREDICTIONS_ALL_CHANNEL_NAMES").as[List[String]],
+    env("MWC_TIMING_CHANNEL_NAMES").as[List[String]],
+    env("MWC_DETAILS_CHANNEL_NAMES").as[List[String]],
+    env("RAID_CHANNEL_NAMES").as[List[String]]
   ).parMapN(BotConfig.apply)
 
   val config: ConfigValue[Effect, Config] = (generalConfig, fileConfig, botConfig).parMapN(Config.apply)

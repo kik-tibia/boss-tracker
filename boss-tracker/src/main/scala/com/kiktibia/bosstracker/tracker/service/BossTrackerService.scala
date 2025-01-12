@@ -1,13 +1,14 @@
 package com.kiktibia.bosstracker.tracker.service
 
-import com.kiktibia.bosstracker.tracker.service.FileIO
 import com.kiktibia.bosstracker.config.Config
+import com.kiktibia.bosstracker.tracker.ObsModel.Raid
+import com.kiktibia.bosstracker.tracker.service.FileIO
+
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import java.time.ZoneId
-import java.time.LocalTime
-import com.kiktibia.bosstracker.tracker.ObsModel.Raid
 
 class BossTrackerService(
     cfg: Config,
