@@ -77,18 +77,24 @@ class DiscordBot(cfg: Config) {
 
   private def sendMessageToChannel(message: String, channelNames: List[String]): Unit =
     guilds.foreach { g =>
-      g.getTextChannels().asScala.find(c => channelNames.contains(c.getName())).foreach { channel =>
-        channel.sendMessage(message).queue()
-      }
+      g.getTextChannels()
+        .asScala
+        .find(guildChannel => channelNames.exists(c => guildChannel.getName().endsWith(c)))
+        .foreach { channel =>
+          channel.sendMessage(message).queue()
+        }
     }
 
   private def sendEmbedsToChannel(embeds: List[MessageEmbed], channelNames: List[String]): Unit =
     guilds.foreach { g =>
-      g.getTextChannels().asScala.find(c => channelNames.contains(c.getName())).foreach { channel =>
-        embeds.foreach { embed =>
-          channel.sendMessageEmbeds(embed).queue()
+      g.getTextChannels()
+        .asScala
+        .find(guildChannel => channelNames.exists(c => guildChannel.getName().endsWith(c)))
+        .foreach { channel =>
+          embeds.foreach { embed =>
+            channel.sendMessageEmbeds(embed).queue()
+          }
         }
-      }
     }
 
   private def categoryPredictionsEmbed(bossChances: List[BossChances], highOnly: Boolean): MessageEmbed = {
