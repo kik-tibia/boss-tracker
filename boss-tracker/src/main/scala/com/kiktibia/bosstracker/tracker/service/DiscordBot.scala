@@ -23,6 +23,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters.*
+import com.kiktibia.bosstracker.tracker.repo.RaidDto
 
 class DiscordBot(cfg: Config) {
 
@@ -71,8 +72,8 @@ class DiscordBot(cfg: Config) {
     sendMessageToChannel(message, cfg.bot.mwcDetailsChannelNames)
   }
 
-  def sendRaids(raids: List[Raid]): Unit = {
-    sendEmbedsToChannel(raids.map(raidEmbed), cfg.bot.raidChannelNames)
+  def sendRaidUpdate(obsRaid: Raid, maybeRaidDto: Option[RaidDto]): Unit = {
+    sendEmbedsToChannel(List(raidEmbed(obsRaid, maybeRaidDto)), cfg.bot.raidChannelNames)
   }
 
   private def sendMessageToChannel(message: String, channelNames: List[String]): Unit =
@@ -119,12 +120,20 @@ class DiscordBot(cfg: Config) {
       .build()
   }
 
-  private def raidEmbed(raid: Raid): MessageEmbed = {
+  private def raidEmbed(obsRaid: Raid, maybeRaidDto: Option[RaidDto]): MessageEmbed = {
+    val raidType = maybeRaidDto.flatMap(_.raidType)
+    val title = raidType.map(_.name).getOrElse("Upcoming Raid")
+    val description = raidType.map(_.message).getOrElse("")
+    val area = obsRaid.areaName.getOrElse("Not announced")
+    val subarea = obsRaid.subareaName.getOrElse("Not announced")
+    val startTime = s"<t:${obsRaid.startDate.toEpochSecond()}:T>"
+
     new EmbedBuilder()
-      .setTitle(raid.category)
-      .setDescription(
-        s"area: ${raid.areaName} - ${raid.subareaName}\nraid: ${raid.raidTypeId}\nstart date: ${raid.startDate.toString()}"
-      )
+      .setTitle(title)
+      .setDescription(description)
+      .addField("Start time", startTime, false)
+      .addField("Area", area, true)
+      .addField("Subarea", subarea, true)
       .build()
   }
 }

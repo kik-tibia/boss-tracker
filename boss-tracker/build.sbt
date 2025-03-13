@@ -1,6 +1,6 @@
 ThisBuild / version := "2.1.0"
 
-ThisBuild / scalaVersion := "3.2.2"
+ThisBuild / scalaVersion := "3.6.4"
 
 name := "boss-tracker"
 
@@ -15,6 +15,7 @@ scalacOptions ++= Seq(
 )
 
 val circeVersion = "0.14.3"
+val doobieVersion = "1.0.0-RC8"
 
 libraryDependencies ++= Seq(
   "io.circe" %% "circe-core",
@@ -23,14 +24,13 @@ libraryDependencies ++= Seq(
 ).map(_ % circeVersion)
 
 libraryDependencies ++= Seq(
-  "org.typelevel" %% "log4cats-slf4j" % "2.5.0"
+  "org.typelevel" %% "log4cats-slf4j" % "2.5.0",
+  "co.fs2" %% "fs2-core" % "3.7.0",
+  "org.apache.commons" % "commons-text" % "1.9",
+  "ch.qos.logback" % "logback-classic" % "1.2.10",
+  "is.cir" %% "ciris" % "3.1.0",
+  "net.dv8tion" % "JDA" % "5.0.0-beta.12",
+  "org.tpolecat" %% "doobie-core" % doobieVersion,
+  "org.tpolecat" %% "doobie-postgres" % doobieVersion,
+  "org.postgresql" % "postgresql" % "42.5.3"
 )
-libraryDependencies += "co.fs2" %% "fs2-core" % "3.7.0"
-
-libraryDependencies += "org.apache.commons" % "commons-text" % "1.9"
-
-libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.10"
-
-libraryDependencies += "is.cir" %% "ciris" % "3.1.0"
-
-libraryDependencies += "net.dv8tion" % "JDA" % "5.0.0-beta.12"

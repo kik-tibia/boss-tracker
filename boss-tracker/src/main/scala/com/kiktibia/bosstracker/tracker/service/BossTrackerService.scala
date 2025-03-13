@@ -9,6 +9,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import cats.effect.IO
 
 class BossTrackerService(
     cfg: Config,
@@ -18,7 +19,7 @@ class BossTrackerService(
     discordBot: DiscordBot
 ) {
 
-  def handleKilledBossUpdate(today: LocalDate): Unit = {
+  def handleKilledBossUpdate(today: LocalDate): IO[Unit] = IO {
     if (shouldPostKilledUpdate()) {
       println("Posting killed bosses update")
       for
@@ -30,7 +31,7 @@ class BossTrackerService(
     }
   }
 
-  def handlePredictionsUpdate(today: LocalDate, now: ZonedDateTime): Unit = {
+  def handlePredictionsUpdate(today: LocalDate, now: ZonedDateTime): IO[Unit] = IO {
     if (shouldPostPredictionsUpdate(today, now)) {
       println("Posting predictions")
       for

@@ -4,7 +4,9 @@ import cats.effect.*
 import cats.syntax.all.*
 import com.kiktibia.bosstracker.config.AppConfig
 import com.kiktibia.bosstracker.config.Config
+import com.kiktibia.bosstracker.tracker.repo.BossTrackerRepo
 import com.kiktibia.bosstracker.tracker.service.*
+import doobie.util.transactor.Transactor
 import fs2.Stream
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
@@ -27,28 +29,34 @@ object Main extends IOApp {
   }
 
   private def runWithConfig(cfg: Config) = {
+    val tx: Transactor[IO] = Transactor.fromDriverManager[IO](
+      driver = "org.postgresql.Driver",
+      url = cfg.db.url,
+      user = cfg.db.user,
+      password = cfg.db.password,
+      logHandler = None
+    )
+    val repo = new BossTrackerRepo(tx)
     val fileIO = new FileIO(cfg)
     val fetcher = new BossDataFetcher(fileIO)
     val predictor = new BossPredictor(fileIO)
     val discordBot = new DiscordBot(cfg)
     val bossTrackerService = new BossTrackerService(cfg, fileIO, fetcher, predictor, discordBot)
-    val obsService = new ObsService(cfg, fileIO, discordBot)
-    println("cfg:")
-    println(cfg.bot.mwcTimingChannelNames)
+    val obsService = new ObsService(fileIO, discordBot, repo)
 
     Stream
       .fixedRateStartImmediately[IO](30.seconds)
       .evalTap { _ =>
-        IO {
-          println("Running stream")
-          val today = LocalDate.now()
-          val now = ZonedDateTime.now()
-          fileIO.updateBossStatsRepo()
-          bossTrackerService.handleKilledBossUpdate(today)
-          bossTrackerService.handlePredictionsUpdate(today, now)
-          obsService.handleMwcUpdate()
-          // obsService.handleRaidsUpdate()
-        }
+        println("Running stream")
+        val today = LocalDate.now()
+        val now = ZonedDateTime.now()
+        fileIO.updateBossStatsRepo()
+        for
+          _ <- bossTrackerService.handleKilledBossUpdate(today)
+          _ <- bossTrackerService.handlePredictionsUpdate(today, now)
+          _ <- obsService.checkForMwcUpdate()
+          _ <- obsService.checkForRaidUpdates()
+        yield ()
       }
       .compile
       .drain

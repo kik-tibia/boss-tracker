@@ -30,10 +30,17 @@ final case class BotConfig(
     raidChannelNames: List[String]
 )
 
+final case class DatabaseConfig(
+    url: String,
+    user: String,
+    password: String
+)
+
 final case class Config(
     general: GeneralConfig,
     file: FileConfig,
-    bot: BotConfig
+    bot: BotConfig,
+    db: DatabaseConfig
 )
 
 object AppConfig {
@@ -66,5 +73,11 @@ object AppConfig {
     env("RAID_CHANNEL_NAMES").as[List[String]]
   ).parMapN(BotConfig.apply)
 
-  val config: ConfigValue[Effect, Config] = (generalConfig, fileConfig, botConfig).parMapN(Config.apply)
+  private val databaseConfig: ConfigValue[Effect, DatabaseConfig] = (
+    env("DB_URL").as[String],
+    env("DB_USER").as[String],
+    env("DB_PASSWORD").as[String]
+  ).parMapN(DatabaseConfig.apply)
+
+  val config: ConfigValue[Effect, Config] = (generalConfig, fileConfig, botConfig, databaseConfig).parMapN(Config.apply)
 }
