@@ -1,8 +1,8 @@
 package com.kiktibia.bosstracker.tracker.repo
 
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
-import java.time.LocalDate
 
 case class RaidTypeRow(
     id: Long,

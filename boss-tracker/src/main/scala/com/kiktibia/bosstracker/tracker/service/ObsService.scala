@@ -6,6 +6,8 @@ import com.kiktibia.bosstracker.config.Config
 import com.kiktibia.bosstracker.tracker.CirceCodecs
 import com.kiktibia.bosstracker.tracker.ObsModel.Raid
 import com.kiktibia.bosstracker.tracker.repo.BossTrackerRepo
+import com.kiktibia.bosstracker.tracker.repo.RaidDto
+import com.kiktibia.bosstracker.tracker.repo.RaidRow
 import com.kiktibia.bosstracker.tracker.service.FileIO
 import io.circe.*
 import io.circe.generic.auto.*
@@ -13,13 +15,11 @@ import io.circe.parser.*
 
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import com.kiktibia.bosstracker.tracker.repo.RaidRow
 import java.util.UUID
-import java.time.OffsetDateTime
-import com.kiktibia.bosstracker.tracker.repo.RaidDto
 
 class ObsService(
     fileIO: FileIO,
@@ -27,30 +27,29 @@ class ObsService(
     repo: BossTrackerRepo
 ) {
 
-  def checkForMwcUpdate(): IO[Unit] = IO {
-    if (shouldPostMwcUpdate()) {
-      println("Posting mwc update")
-      val timeOfLastMwcChange: ZonedDateTime = fileIO
-        .getTimeOfLastMwcChange()
-
-      val mwcTimeString: String = timeOfLastMwcChange
-        .withZoneSameInstant(ZoneId.of("Europe/Berlin"))
-        .format(DateTimeFormatter.ofPattern("HH:mm:ss z"))
-      val mwcTimingMessage: String = s"MWC change detected at `$mwcTimeString`"
-
-      discordBot.sendMwcTiming(mwcTimingMessage)
-
-      val mwcDateString: String = timeOfLastMwcChange
-        .withZoneSameInstant(ZoneId.of("Europe/Berlin"))
-        .format(DateTimeFormatter.ISO_LOCAL_DATE)
-      val mwcDetails: String = fileIO.getMwcDetails()
-      val mwcDetailsMessage: String =
-        s"**Mini world changes for $mwcDateString:**\n${parseMwcJson(mwcDetails)}"
-
-      discordBot.sendMwcDetails(mwcDetailsMessage)
-
-      fileIO.updateLastMwcPost(timeOfLastMwcChange)
-    }
+  def checkForMwcUpdate(): IO[Unit] = {
+    for
+      shouldPost <- shouldPostMwcUpdate()
+      _ <-
+        if (shouldPost) {
+          for
+            timeOfLastMwcChange <- fileIO.getTimeOfLastMwcChange()
+            mwcTimeString = timeOfLastMwcChange
+              .withZoneSameInstant(ZoneId.of("Europe/Berlin"))
+              .format(DateTimeFormatter.ofPattern("HH:mm:ss z"))
+            mwcTimingMessage = s"MWC change detected at `$mwcTimeString`"
+            _ = discordBot.sendMwcTiming(mwcTimingMessage)
+            mwcDateString = timeOfLastMwcChange
+              .withZoneSameInstant(ZoneId.of("Europe/Berlin"))
+              .format(DateTimeFormatter.ISO_LOCAL_DATE)
+            mwcDetails <- fileIO.getMwcDetails()
+            mwcDetailsMessage =
+              s"**Mini world changes for $mwcDateString:**\n${parseMwcJson(mwcDetails)}"
+            _ = discordBot.sendMwcDetails(mwcDetailsMessage)
+            _ <- fileIO.updateLastMwcPost(timeOfLastMwcChange)
+          yield ()
+        } else IO.unit
+    yield ()
   }
 
   private def parseMwcJson(jsonString: String): String = {
@@ -66,36 +65,36 @@ class ObsService(
       .mkString("\n")
   }
 
-  private def shouldPostMwcUpdate(): Boolean = {
-    val timeOfLastPost = fileIO.getTimeOfLastMwcPost()
-    val timeOfLastMwcChange = fileIO.getTimeOfLastMwcChange()
-    timeOfLastMwcChange.isAfter(timeOfLastPost)
+  private def shouldPostMwcUpdate(): IO[Boolean] = {
+    for
+      timeOfLastPost <- fileIO.getTimeOfLastMwcPost()
+      timeOfLastMwcChange <- fileIO.getTimeOfLastMwcChange()
+    yield timeOfLastMwcChange.isAfter(timeOfLastPost)
   }
 
   def checkForRaidUpdates(): IO[Unit] = {
-    val raidJson: String = fileIO.parseRaidData()
-    val maybeParsed = parser.decode[List[Raid]](raidJson)
-    val raidData: List[Raid] = maybeParsed.getOrElse(Nil)
-
-    val updates = raidData
-      .groupBy(_.raidId)
-      .map { case (uuid, raidNotifs) =>
-        val latestObsRaid = raidNotifs.maxBy(_.announcementDate)
-        for
-          repoRaid <- repo.getRaid(uuid)
-          didUpdate <- handleUpdate(latestObsRaid, repoRaid)
-          _ <-
-            if (didUpdate) {
-              for
-                updatedRepoRaid <- repo.getRaid(uuid)
-                _ = discordBot.sendRaidUpdate(latestObsRaid, updatedRepoRaid)
-              yield IO.unit
-            } else IO.unit
-        yield ()
-      }
-      .toList
-
-    updates.sequence.map(_ => ())
+    val raidData: IO[List[Raid]] = fileIO.parseRaidData().map(s => parser.decode[List[Raid]](s)).map(_.getOrElse(Nil))
+    for
+      data <- raidData
+      updates = data
+        .groupBy(_.raidId)
+        .map { case (uuid, raidNotifs) =>
+          val latestObsRaid = raidNotifs.maxBy(_.announcementDate)
+          for
+            repoRaid <- repo.getRaid(uuid)
+            didUpdate <- handleUpdate(latestObsRaid, repoRaid)
+            _ <-
+              if (didUpdate) {
+                for
+                  updatedRepoRaid <- repo.getRaid(uuid)
+                  _ = discordBot.sendRaidUpdate(latestObsRaid, updatedRepoRaid)
+                yield IO.unit
+              } else IO.unit
+          yield ()
+        }
+        .toList
+      _ <- updates.sequence
+    yield ()
   }
 
   private def handleUpdate(obsRaid: Raid, maybeRaidDto: Option[RaidDto]): IO[Boolean] = {

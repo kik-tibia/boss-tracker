@@ -50,8 +50,8 @@ object Main extends IOApp {
         println("Running stream")
         val today = LocalDate.now()
         val now = ZonedDateTime.now()
-        fileIO.updateBossStatsRepo()
         for
+          _ <- fileIO.updateBossStatsRepo()
           _ <- bossTrackerService.handleKilledBossUpdate(today)
           _ <- bossTrackerService.handlePredictionsUpdate(today, now)
           _ <- obsService.checkForMwcUpdate()

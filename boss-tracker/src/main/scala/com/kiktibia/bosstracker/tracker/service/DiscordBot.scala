@@ -8,6 +8,7 @@ import cats.syntax.all.*
 import com.kiktibia.bosstracker.config.Config
 import com.kiktibia.bosstracker.tracker.Model.*
 import com.kiktibia.bosstracker.tracker.ObsModel.Raid
+import com.kiktibia.bosstracker.tracker.repo.RaidDto
 import io.circe.Error
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.JDABuilder
@@ -23,7 +24,6 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters.*
-import com.kiktibia.bosstracker.tracker.repo.RaidDto
 
 class DiscordBot(cfg: Config) {
 

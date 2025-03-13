@@ -1,13 +1,13 @@
 package com.kiktibia.bosstracker.tracker
 
-import java.time.format.DateTimeFormatter
-import io.circe.*
-import io.circe.parser.*
-import io.circe.generic.auto.*
 import cats.syntax.all.*
+import io.circe.*
+import io.circe.generic.auto.*
+import io.circe.parser.*
 
 import java.time.LocalDate
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 trait CirceCodecs {
   private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")

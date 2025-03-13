@@ -1,18 +1,13 @@
 package com.kiktibia.bosstracker.tracker.repo
 
-import doobie.util.transactor.Transactor
+import cats.effect.IO
 import doobie.implicits.*
 import doobie.postgres.implicits.*
-import cats.effect.IO
+import doobie.util.transactor.Transactor
+
 import java.util.UUID
 
 class BossTrackerRepo(tx: Transactor[IO]) {
-
-  def selectOneThing(): IO[Unit] = {
-    sql"SELECT name FROM raid_type".query[String].to[List].transact(tx).map { names =>
-      println(names)
-    }
-  }
 
   def upsertRaid(raid: RaidRow): IO[Int] = {
     sql"""INSERT INTO raid(raid_id, raid_type_id, area, subarea, start_date)
