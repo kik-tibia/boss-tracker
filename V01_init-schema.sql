@@ -17,7 +17,7 @@ CREATE TABLE raid (
   start_date TIMESTAMPTZ
 );
 
-INSERT INTO raid_type(id, name, message, area, subarea, window_min, window_max, event_date_start, event_date_end) VALUES
+INSERT INTO raid_type(id, name, message, area, subarea, window_min, window_max, event_start, event_end) VALUES
   (1,'?','A troll is happily trolling the Orc Fortress - somebody call the CMs!',NULL,NULL,NULL,NULL,NULL,NULL),
   (2,'?','A mummy has appeared somewhere east of Grizzly Adams... start counting!',NULL,NULL,NULL,NULL,NULL,NULL),
   (3,'?','A War Golem has appeared south-west of Svargrond.',NULL,NULL,NULL,NULL,NULL,NULL),

@@ -28,7 +28,6 @@ class BossTrackerRepo(tx: Transactor[IO]) {
       .transact(tx)
   }
 
-  // rt.id, rt.name, rt.message, rt.area, rt.subarea, rt.window_min, rt.window_max, rt.event_start, rt.event_end
   def getRaid(uuid: UUID): IO[Option[RaidDto]] = {
     (for {
       maybeRaid <- sql"""
