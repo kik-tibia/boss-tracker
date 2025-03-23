@@ -1,3 +1,13 @@
+CREATE TABLE discord_message (
+  id BIGSERIAL PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL,
+  message_type VARCHAR NOT NULL,
+  guild_id VARCHAR NOT NULL,
+  channel_id VARCHAR NOT NULL,
+  message_id VARCHAR NOT NULL,
+  UNIQUE (message_type, guild_id)
+);
+
 CREATE TABLE raid_type (
   id BIGINT PRIMARY KEY,
   name VARCHAR,
@@ -9,6 +19,7 @@ CREATE TABLE raid_type (
   event_start DATE,
   event_end DATE
 );
+
 CREATE TABLE raid (
   raid_id UUID PRIMARY KEY,
   raid_type_id BIGINT,

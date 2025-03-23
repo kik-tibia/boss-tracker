@@ -2,17 +2,21 @@ package com.kiktibia.bosstracker.tracker.service
 
 import cats.Applicative
 import cats.Monad
+import cats.data.EitherT
+import cats.effect.IO
 import cats.effect.Sync
 import cats.implicits.*
 import cats.syntax.all.*
 import com.kiktibia.bosstracker.config.Config
 import com.kiktibia.bosstracker.tracker.Model.*
 import com.kiktibia.bosstracker.tracker.ObsModel.Raid
+import com.kiktibia.bosstracker.tracker.repo.DiscordMessageDto
 import com.kiktibia.bosstracker.tracker.repo.RaidDto
 import io.circe.Error
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.entities.Guild
+import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.entities.MessageEmbed
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
@@ -23,7 +27,9 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.CompletableFuture
 import scala.jdk.CollectionConverters.*
+import scala.util.Try
 
 class DiscordBot(cfg: Config) {
 
@@ -98,6 +104,100 @@ class DiscordBot(cfg: Config) {
         }
     }
 
+  private def raidEmbed(obsRaid: Raid, maybeRaidDto: Option[RaidDto]): MessageEmbed = {
+    val raidType = maybeRaidDto.flatMap(_.raidType)
+    val title = raidType.map(_.name).getOrElse("Upcoming Raid")
+    val description = raidType.map(_.message).getOrElse("")
+    val area = obsRaid.areaName.getOrElse("Not announced")
+    val subarea = obsRaid.subareaName.getOrElse("Not announced")
+    val startTime = s"<t:${obsRaid.startDate.toEpochSecond()}:T>"
+
+    new EmbedBuilder()
+      .setTitle(title)
+      .setDescription(description)
+      .addField("Start time", startTime, false)
+      .addField("Area", area, true)
+      .addField("Subarea", subarea, true)
+      .build()
+  }
+
+  def generateRaidEmbed(raids: List[RaidDto]): MessageEmbed = {
+    val embed = new EmbedBuilder()
+
+    val fields = raids.sortBy(_.startDate).map { raid =>
+      val fieldName = raid.raidType.fold("Upcoming Raid")(_.name)
+      val startTime = s"<t:${raid.startDate.toEpochSecond()}:T>"
+      val fieldValue = raid.raidType match {
+        case Some(raidType) =>
+          s"${startTime}\n${raidType.message}"
+        case None =>
+          s"${startTime}\nArea: ${raid.area.getOrElse("Not announced")}\nSubarea: ${raid.subarea.getOrElse("Not announced")}"
+      }
+      MessageEmbed.Field(fieldName, fieldValue, true)
+    }
+    embed.setTitle("Raids")
+    fields.map(embed.addField)
+    embed.build()
+  }
+
+  def createOrUpdateEmbeds(
+      embed: MessageEmbed,
+      discordMessages: List[DiscordMessageDto],
+      additionalMessages: List[String] = Nil
+  ): IO[List[Message]] = {
+    guilds
+      .map { guild =>
+        val messageIO: IO[Option[Message]] = (for
+          discordMessage <- discordMessages.find(_.guildId == guild.getId())
+          channel <- Option(guild.getTextChannelById(discordMessage.channelId))
+        yield IO.fromCompletableFuture(
+          IO(wrapFutureInOption(channel.retrieveMessageById(discordMessage.messageId).submit()))
+        )).sequence.map(_.flatten)
+        for
+          maybeMessage <- messageIO
+          updatedMessage <- maybeMessage match {
+            case Some(message) => editableEdit(embed, message)
+            case None => editableSend(embed, guild, cfg.bot.raidChannelNames)
+          }
+          _ <- updatedMessage.toList.flatMap { message =>
+            additionalMessages.map(m => IO.fromCompletableFuture(IO(message.getChannel().sendMessage(m).submit())))
+          }.sequence
+        yield updatedMessage
+      }
+      .sequence
+      .map(_.flatten)
+  }
+
+  private def editableSend(embed: MessageEmbed, guild: Guild, channelNames: List[String]): IO[Option[Message]] = {
+    guild
+      .getTextChannels()
+      .asScala
+      .find(guildChannel => channelNames.exists(c => guildChannel.getName().endsWith(c)))
+      .map { channel =>
+        IO.async_[Option[Message]] { cb =>
+          channel
+            .sendMessageEmbeds(embed)
+            .queue(
+              msg => cb(Right(Some(msg))),
+              throwable => cb(Right(None))
+            )
+        }
+      }
+      .sequence
+      .map(_.flatten)
+  }
+
+  private def editableEdit(embed: MessageEmbed, message: Message): IO[Option[Message]] = {
+    IO.async_[Option[Message]] { cb =>
+      message
+        .editMessageEmbeds(embed)
+        .queue(
+          editedMsg => cb(Right(Some(editedMsg))),
+          throwable => cb(Right(None))
+        )
+    }
+  }
+
   private def categoryPredictionsEmbed(bossChances: List[BossChances], highOnly: Boolean): MessageEmbed = {
     val categoryString = bossChances.head.boss.emojiCategory
     val bossesToPost = bossChances
@@ -120,20 +220,9 @@ class DiscordBot(cfg: Config) {
       .build()
   }
 
-  private def raidEmbed(obsRaid: Raid, maybeRaidDto: Option[RaidDto]): MessageEmbed = {
-    val raidType = maybeRaidDto.flatMap(_.raidType)
-    val title = raidType.map(_.name).getOrElse("Upcoming Raid")
-    val description = raidType.map(_.message).getOrElse("")
-    val area = obsRaid.areaName.getOrElse("Not announced")
-    val subarea = obsRaid.subareaName.getOrElse("Not announced")
-    val startTime = s"<t:${obsRaid.startDate.toEpochSecond()}:T>"
+  private def wrapFutureInOption[A](cf: => CompletableFuture[A]): CompletableFuture[Option[A]] =
+    try
+      cf.thenApply((i: A) => Some(i): Option[A]).exceptionally(_ => None: Option[A])
+    catch { case _: Throwable => CompletableFuture.completedFuture(None) }
 
-    new EmbedBuilder()
-      .setTitle(title)
-      .setDescription(description)
-      .addField("Start time", startTime, false)
-      .addField("Area", area, true)
-      .addField("Subarea", subarea, true)
-      .build()
-  }
 }

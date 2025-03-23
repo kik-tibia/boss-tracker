@@ -6,12 +6,14 @@ import com.kiktibia.bosstracker.config.Config
 import com.kiktibia.bosstracker.tracker.CirceCodecs
 import com.kiktibia.bosstracker.tracker.ObsModel.Raid
 import com.kiktibia.bosstracker.tracker.repo.BossTrackerRepo
+import com.kiktibia.bosstracker.tracker.repo.DiscordMessageDto
 import com.kiktibia.bosstracker.tracker.repo.RaidDto
 import com.kiktibia.bosstracker.tracker.repo.RaidRow
 import com.kiktibia.bosstracker.tracker.service.FileIO
 import io.circe.*
 import io.circe.generic.auto.*
 import io.circe.parser.*
+import net.dv8tion.jda.api.EmbedBuilder
 
 import java.time.LocalDate
 import java.time.LocalTime
@@ -76,25 +78,50 @@ class ObsService(
     val raidData: IO[List[Raid]] = fileIO.parseRaidData().map(s => parser.decode[List[Raid]](s)).map(_.getOrElse(Nil))
     for
       data <- raidData
-      updates = data
+      latestObsRaids = data
         .groupBy(_.raidId)
-        .map { case (uuid, raidNotifs) =>
-          val latestObsRaid = raidNotifs.maxBy(_.announcementDate)
-          for
-            repoRaid <- repo.getRaid(uuid)
-            didUpdate <- handleUpdate(latestObsRaid, repoRaid)
-            _ <-
-              if (didUpdate) {
-                for
-                  updatedRepoRaid <- repo.getRaid(uuid)
-                  _ = discordBot.sendRaidUpdate(latestObsRaid, updatedRepoRaid)
-                yield IO.unit
-              } else IO.unit
-          yield ()
-        }
+        .map { case (uuid, raidNotifs) => raidNotifs.max }
         .toList
-      _ <- updates.sequence
+      updatedRaids <- latestObsRaids
+        .map { latestObsRaid =>
+          for
+            repoRaid <- repo.getRaid(latestObsRaid.raidId)
+            didUpdate <- handleUpdate(latestObsRaid, repoRaid)
+            maybeUpdatedRaid <- if (didUpdate) repo.getRaid(latestObsRaid.raidId) else IO.pure(None)
+          yield maybeUpdatedRaid
+        }
+        .sequence
+        .map(_.flatten)
+      _ <-
+        if (updatedRaids.nonEmpty) {
+          val alerts = noteworthyRaidWarnings(updatedRaids)
+          val mostRecentSSTime = getMostRecentSSTime()
+          for
+            raids <- repo.getRaids(latestObsRaids.map(_.raidId))
+            embed = discordBot.generateRaidEmbed(raids)
+            discordMessages <- repo.getDiscordMessages("raids", mostRecentSSTime)
+            newMessages <- discordBot.createOrUpdateEmbeds(embed, discordMessages, alerts)
+            _ <- repo.upsertDiscordMessages(
+              newMessages.map(m =>
+                DiscordMessageDto(0, mostRecentSSTime, "raids", m.getGuild().getId(), m.getChannel().getId(), m.getId())
+              )
+            )
+          yield ()
+        } else IO.unit
     yield ()
+  }
+
+  private def getMostRecentSSTime(): OffsetDateTime = {
+    val now = ZonedDateTime.now(ZoneId.of("Europe/Berlin"))
+    val t = now.withHour(10).withMinute(0).withSecond(0).withNano(0)
+    if (now.isBefore(t)) t.minusDays(1).toOffsetDateTime() else t.toOffsetDateTime()
+  }
+
+  private def noteworthyRaidWarnings(raids: List[RaidDto]): List[String] = {
+    raids.flatMap { raid =>
+      if (raid.area.contains("edron") && raid.subarea.isEmpty) Some("Edron raid")
+      else None
+    }
   }
 
   private def handleUpdate(obsRaid: Raid, maybeRaidDto: Option[RaidDto]): IO[Boolean] = {

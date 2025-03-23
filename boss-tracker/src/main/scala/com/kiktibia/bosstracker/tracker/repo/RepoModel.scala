@@ -4,6 +4,15 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
 
+case class DiscordMessageRow(
+    id: Long,
+    createdAt: OffsetDateTime,
+    messageType: String,
+    guildId: String,
+    channelId: String,
+    messageId: String
+)
+
 case class RaidTypeRow(
     id: Long,
     name: String,
@@ -15,6 +24,7 @@ case class RaidTypeRow(
     eventStart: Option[LocalDate],
     eventEnd: Option[LocalDate]
 )
+
 case class RaidRow(
     raidId: UUID,
     raidTypeId: Option[Long],
@@ -41,4 +51,13 @@ case class RaidDto(
     area: Option[String],
     subarea: Option[String],
     startDate: OffsetDateTime
+)
+
+case class DiscordMessageDto(
+    id: Long,
+    createdAt: OffsetDateTime,
+    messageType: String,
+    guildId: String,
+    channelId: String,
+    messageId: String
 )
