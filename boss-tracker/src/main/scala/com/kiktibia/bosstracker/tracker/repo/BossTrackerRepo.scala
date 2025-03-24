@@ -26,7 +26,7 @@ class BossTrackerRepo(tx: Transactor[IO]) {
       """INSERT INTO discord_message(created_at, message_type, guild_id, channel_id, message_id)
         VALUES (?, ?, ?, ?, ?)
         ON CONFLICT (message_type, guild_id)
-        DO UPDATE SET channel_id = EXCLUDED.channel_id, message_id = EXCLUDED.message_id
+        DO UPDATE SET created_at = EXCLUDED.created_at, channel_id = EXCLUDED.channel_id, message_id = EXCLUDED.message_id
       """
     Update[(OffsetDateTime, String, String, String, String)](sql)
       .updateMany(discordMessages.map(m => (m.createdAt, m.messageType, m.guildId, m.channelId, m.messageId)))
