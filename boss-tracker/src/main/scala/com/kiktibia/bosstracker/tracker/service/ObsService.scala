@@ -79,6 +79,7 @@ class ObsService(
     for
       data <- raidData
       latestObsRaids = data
+        .filter(_.worldName == "Nefera")
         .groupBy(_.raidId)
         .map { case (uuid, raidNotifs) => raidNotifs.max }
         .toList
