@@ -1,6 +1,6 @@
-ThisBuild / version := "3.3.1"
+ThisBuild / version := "4.0.0"
 
-ThisBuild / scalaVersion := "3.6.4"
+ThisBuild / scalaVersion := "3.7.0"
 
 name := "boss-tracker"
 

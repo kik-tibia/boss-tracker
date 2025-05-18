@@ -59,7 +59,7 @@ class BossTrackerRepo(tx: Transactor[IO]) {
           raid.raidTypeId match {
             case Some(rtId) =>
               sql"""
-              SELECT id, name, message, area, subarea, window_min, window_max, event_start, event_end
+              SELECT id, name, message, area, subarea, window_min, window_max, event_start, event_end, duration
               FROM raid_type
               WHERE id = $rtId
             """.query[RaidTypeRow].option.transact(tx).map(rtOpt => Some((raid, rtOpt)))
@@ -72,6 +72,27 @@ class BossTrackerRepo(tx: Transactor[IO]) {
       .map(_.map(raidToDto))
   }
 
+  def getOtherRaidsStage1(area: String): IO[List[RaidTypeDto]] = {
+    sql"""
+    SELECT rt.*, MAX(r.start_date)
+    FROM raid_type rt
+    LEFT JOIN raid r ON r.raid_type_id = rt.id
+    WHERE rt.area = $area
+    GROUP BY rt.id
+    """.query[RaidTypeDto].to[List].transact(tx)
+  }
+
+  def getOtherRaidsStage2(area: String, subarea: String): IO[List[RaidTypeDto]] = {
+    sql"""
+    SELECT rt.*, MAX(r.start_date)
+    FROM raid_type rt
+    LEFT JOIN raid r ON r.raid_type_id = rt.id
+    WHERE rt.area = $area
+    AND rt.subarea = $subarea
+    GROUP BY rt.id
+    """.query[RaidTypeDto].to[List].transact(tx)
+  }
+
   // Opens multiple connections for each uuid but there should never be more than 10 or 20
   def getRaids(uuids: List[UUID]): IO[List[RaidDto]] =
     uuids.traverse(getRaid).map(_.flatten)
@@ -80,6 +101,18 @@ class BossTrackerRepo(tx: Transactor[IO]) {
     RaidDto(r.raidId, rt.map(raidTypeToDto), r.area, r.subarea, r.startDate)
 
   def raidTypeToDto(rt: RaidTypeRow): RaidTypeDto =
-    RaidTypeDto(rt.id, rt.name, rt.message, rt.area, rt.subarea, rt.windowMin, rt.windowMax, rt.eventStart, rt.eventEnd)
+    RaidTypeDto(
+      rt.id,
+      rt.name,
+      rt.message,
+      rt.area,
+      rt.subarea,
+      rt.windowMin,
+      rt.windowMax,
+      rt.eventStart,
+      rt.eventEnd,
+      rt.duration,
+      None
+    )
 
 }

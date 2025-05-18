@@ -22,7 +22,8 @@ case class RaidTypeRow(
     windowMin: Option[Int],
     windowMax: Option[Int],
     eventStart: Option[LocalDate],
-    eventEnd: Option[LocalDate]
+    eventEnd: Option[LocalDate],
+    duration: Option[Int]
 )
 
 case class RaidRow(
@@ -42,7 +43,9 @@ case class RaidTypeDto(
     windowMin: Option[Int],
     windowMax: Option[Int],
     eventStart: Option[LocalDate],
-    eventEnd: Option[LocalDate]
+    eventEnd: Option[LocalDate],
+    duration: Option[Int],
+    lastOccurrence: Option[OffsetDateTime]
 )
 
 case class RaidDto(

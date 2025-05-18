@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.implicits.*
 import com.kiktibia.bosstracker.config.Config
 import com.kiktibia.bosstracker.tracker.CirceCodecs
-import com.kiktibia.bosstracker.tracker.ObsModel.Raid
+import com.kiktibia.bosstracker.tracker.ObsModel.*
 import com.kiktibia.bosstracker.tracker.repo.BossTrackerRepo
 import com.kiktibia.bosstracker.tracker.repo.DiscordMessageDto
 import com.kiktibia.bosstracker.tracker.repo.RaidDto
@@ -15,6 +15,7 @@ import io.circe.generic.auto.*
 import io.circe.parser.*
 import net.dv8tion.jda.api.EmbedBuilder
 
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.OffsetDateTime
@@ -29,6 +30,8 @@ class ObsService(
     repo: BossTrackerRepo
 ) {
 
+  private val zone = ZoneId.of("Europe/Berlin")
+
   def checkForMwcUpdate(): IO[Unit] = {
     for
       shouldPost <- shouldPostMwcUpdate()
@@ -37,12 +40,12 @@ class ObsService(
           for
             timeOfLastMwcChange <- fileIO.getTimeOfLastMwcChange()
             mwcTimeString = timeOfLastMwcChange
-              .withZoneSameInstant(ZoneId.of("Europe/Berlin"))
+              .withZoneSameInstant(zone)
               .format(DateTimeFormatter.ofPattern("HH:mm:ss z"))
             mwcTimingMessage = s"MWC change detected at `$mwcTimeString`"
             _ = discordBot.sendMwcTiming(mwcTimingMessage)
             mwcDateString = timeOfLastMwcChange
-              .withZoneSameInstant(ZoneId.of("Europe/Berlin"))
+              .withZoneSameInstant(zone)
               .format(DateTimeFormatter.ISO_LOCAL_DATE)
             mwcDetails <- fileIO.getMwcDetails()
             mwcDetailsMessage =
@@ -99,7 +102,16 @@ class ObsService(
           val mostRecentSSTime = getMostRecentSSTime()
           for
             raids <- repo.getRaids(latestObsRaids.map(_.raidId))
-            embed = discordBot.generateRaidEmbed(raids)
+            raidsWithCandidates <- raids.map { raid =>
+              val candidates = (raid.area, raid.subarea, raid.raidType) match {
+                case (Some(area), None, None) => repo.getOtherRaidsStage1(area)
+                case (Some(area), Some(subarea), None) => repo.getOtherRaidsStage2(area, subarea)
+                case _ => IO.pure(Nil)
+              }
+              candidates.map(c => RaidWithCandidates(raid, c))
+            }.sequence
+            raidsWithProbabilities = raidsWithCandidates.map(calculateProbabilities)
+            embed = discordBot.generateRaidEmbed(raidsWithProbabilities)
             discordMessages <- repo.getDiscordMessages("raids", mostRecentSSTime)
             newMessages <- discordBot.createOrUpdateEmbeds(embed, discordMessages, alerts)
             _ <- repo.upsertDiscordMessages(
@@ -112,8 +124,60 @@ class ObsService(
     yield ()
   }
 
+  private def calculateProbabilities(raid: RaidWithCandidates): RaidWithProbabilities = {
+    def zdtToSS(zdt: ZonedDateTime) = {
+      val zdtAt10am = ZonedDateTime.of(zdt.toLocalDate, LocalTime.of(10, 0), zone)
+      if (zdt.isBefore(zdtAt10am)) zdtAt10am.minusDays(1) else zdtAt10am
+    }
+    val raidStart: ZonedDateTime = raid.raid.startDate.toInstant.atZone(zone)
+    val currentSS: ZonedDateTime = zdtToSS(raidStart)
+    val candidatesWithTimeLeft = raid.candidates.flatMap { c =>
+      (c.lastOccurrence, c.windowMin, c.windowMax, c.duration, c.eventStart, c.eventEnd) match {
+        case (_, _, _, _, Some(eventStart), Some(eventEnd)) if !insideEvent(raidStart, eventStart, eventEnd) => None
+        case (_, _, _, Some(duration), _, _) if Duration.between(raidStart, currentSS.plusDays(1)).toHours < duration =>
+          None
+        case (Some(lastOccurrence), Some(windowMin), Some(windowMax), maybeDuration, _, _) =>
+          val lastZdt = lastOccurrence.toInstant.atZone(zone)
+          val ssOfLast = zdtToSS(lastZdt)
+          val windowStart = ssOfLast.plusDays(windowMin)
+          val windowEnd = ssOfLast.plusDays(windowMax + 1)
+          if (raidStart.isBefore(windowStart) || raidStart.isAfter(windowEnd))
+            None
+          else {
+            val daysInWindow = Duration.between(currentSS, windowEnd).toDays
+            val lastRaidFractionIntoDay = Duration.between(ssOfLast, lastZdt).toSeconds / 86400.0
+            val weightedEndSecondsInWindow =
+              Duration.between(raidStart, windowEnd).toSeconds
+                - (daysInWindow * maybeDuration.getOrElse(1) * 3600)
+                - (1 - lastRaidFractionIntoDay) * (86400 - maybeDuration.getOrElse(1) * 3600)
+            val weightedStartEndSecondsInWindow =
+              if (currentSS == windowStart) weightedEndSecondsInWindow / (1 - lastRaidFractionIntoDay)
+              else weightedEndSecondsInWindow
+            Some(c, weightedStartEndSecondsInWindow)
+          }
+        case (None, _, Some(windowMax), maybeDuration, _, _) =>
+          Some(c, windowMax.toDouble * (86400 - maybeDuration.getOrElse(1) * 3600))
+        case _ => None
+      }
+    }
+    val timeSum = candidatesWithTimeLeft.map(_._2).sum
+    val denominator = candidatesWithTimeLeft.map(c => timeSum / c._2).sum
+    val probabilities = candidatesWithTimeLeft
+      .map { c =>
+        CandidateProbability(c._1, (timeSum / c._2) / denominator)
+      }
+      .sortBy(-_.probability)
+    RaidWithProbabilities(raid.raid, probabilities)
+  }
+
+  private def insideEvent(start: ZonedDateTime, eventStart: LocalDate, eventEnd: LocalDate): Boolean = {
+    val zonedEventStart = ZonedDateTime.of(eventStart, LocalTime.of(10, 0), zone)
+    val zonedEventEnd = ZonedDateTime.of(eventEnd, LocalTime.of(10, 0), zone)
+    !start.isBefore(zonedEventStart) && !start.isAfter(zonedEventEnd)
+  }
+
   private def getMostRecentSSTime(): OffsetDateTime = {
-    val now = ZonedDateTime.now(ZoneId.of("Europe/Berlin"))
+    val now = ZonedDateTime.now(zone)
     val t = now.withHour(10).withMinute(0).withSecond(0).withNano(0)
     if (now.isBefore(t)) t.minusDays(1).toOffsetDateTime() else t.toOffsetDateTime()
   }

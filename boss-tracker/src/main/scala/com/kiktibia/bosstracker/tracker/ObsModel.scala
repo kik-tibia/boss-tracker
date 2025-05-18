@@ -1,5 +1,8 @@
 package com.kiktibia.bosstracker.tracker
 
+import com.kiktibia.bosstracker.tracker.repo.RaidDto
+import com.kiktibia.bosstracker.tracker.repo.RaidTypeDto
+
 import java.time.ZonedDateTime
 import java.util.UUID
 
@@ -29,5 +32,20 @@ object ObsModel {
         else 0
       }
   }
+
+  case class RaidWithCandidates(
+      raid: RaidDto,
+      candidates: List[RaidTypeDto]
+  )
+
+  case class CandidateProbability(
+      raidType: RaidTypeDto,
+      probability: Double
+  )
+
+  case class RaidWithProbabilities(
+      raid: RaidDto,
+      probabilities: List[CandidateProbability]
+  )
 
 }

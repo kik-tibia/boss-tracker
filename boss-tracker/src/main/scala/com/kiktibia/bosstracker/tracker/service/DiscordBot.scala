@@ -10,6 +10,7 @@ import cats.syntax.all.*
 import com.kiktibia.bosstracker.config.Config
 import com.kiktibia.bosstracker.tracker.Model.*
 import com.kiktibia.bosstracker.tracker.ObsModel.Raid
+import com.kiktibia.bosstracker.tracker.ObsModel.RaidWithProbabilities
 import com.kiktibia.bosstracker.tracker.repo.DiscordMessageDto
 import com.kiktibia.bosstracker.tracker.repo.RaidDto
 import io.circe.Error
@@ -121,18 +122,18 @@ class DiscordBot(cfg: Config) {
       .build()
   }
 
-  def generateRaidEmbed(raids: List[RaidDto]): MessageEmbed = {
+  def generateRaidEmbed(raids: List[RaidWithProbabilities]): MessageEmbed = {
     val embed = new EmbedBuilder()
 
     def isKingsday(r: RaidDto) = r.raidType.exists(_.name.startsWith("Kingsday"))
 
     // Discord embeds can only have 25 fields, so only display the first Kingsday raid
-    val kingsdayToKeep = raids.find(isKingsday)
+    val kingsdayToKeep = raids.sortBy(_.raid.startDate).map(_.raid).find(isKingsday)
 
     val fields = raids
-      .filter(r => kingsdayToKeep.contains(r) || !isKingsday(r))
-      .sortBy(_.startDate)
-      .map { raid =>
+      .filter(r => kingsdayToKeep.contains(r.raid) || !isKingsday(r.raid))
+      .sortBy(_.raid.startDate)
+      .map { case RaidWithProbabilities(raid, probabilities) =>
         val fieldName = raid.raidType.fold("Upcoming Raid")(rt =>
           if (isKingsday(raid)) "Kingsday (subsequent Kingsday raids hidden)" else rt.name
         )
@@ -141,7 +142,10 @@ class DiscordBot(cfg: Config) {
           case Some(raidType) =>
             s"${startTime}\n${raidType.message}"
           case None =>
-            s"${startTime}\nArea: ${raid.area.getOrElse("Not announced")}\nSubarea: ${raid.subarea.getOrElse("Not announced")}"
+            val predictionString =
+              probabilities.map(p => f"`${p.probability * 100}%.2f%%` ${p.raidType.name}").mkString("\n")
+            s"${startTime}\nArea: ${raid.area
+                .getOrElse("Not announced")}\nSubarea: ${raid.subarea.getOrElse("Not announced")}\n$predictionString"
         }
         MessageEmbed.Field(fieldName, fieldValue, true)
       }
