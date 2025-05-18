@@ -124,17 +124,27 @@ class DiscordBot(cfg: Config) {
   def generateRaidEmbed(raids: List[RaidDto]): MessageEmbed = {
     val embed = new EmbedBuilder()
 
-    val fields = raids.sortBy(_.startDate).map { raid =>
-      val fieldName = raid.raidType.fold("Upcoming Raid")(_.name)
-      val startTime = s"<t:${raid.startDate.toEpochSecond()}:T>"
-      val fieldValue = raid.raidType match {
-        case Some(raidType) =>
-          s"${startTime}\n${raidType.message}"
-        case None =>
-          s"${startTime}\nArea: ${raid.area.getOrElse("Not announced")}\nSubarea: ${raid.subarea.getOrElse("Not announced")}"
+    def isKingsday(r: RaidDto) = r.raidType.exists(_.name.startsWith("Kingsday"))
+
+    // Discord embeds can only have 25 fields, so only display the first Kingsday raid
+    val kingsdayToKeep = raids.find(isKingsday)
+
+    val fields = raids
+      .filter(r => kingsdayToKeep.contains(r) || !isKingsday(r))
+      .sortBy(_.startDate)
+      .map { raid =>
+        val fieldName = raid.raidType.fold("Upcoming Raid")(rt =>
+          if (isKingsday(raid)) "Kingsday (subsequent Kingsday raids hidden)" else rt.name
+        )
+        val startTime = s"<t:${raid.startDate.toEpochSecond()}:T>"
+        val fieldValue = raid.raidType match {
+          case Some(raidType) =>
+            s"${startTime}\n${raidType.message}"
+          case None =>
+            s"${startTime}\nArea: ${raid.area.getOrElse("Not announced")}\nSubarea: ${raid.subarea.getOrElse("Not announced")}"
+        }
+        MessageEmbed.Field(fieldName, fieldValue, true)
       }
-      MessageEmbed.Field(fieldName, fieldValue, true)
-    }
     embed.setTitle("Raids")
     fields.map(embed.addField)
     embed.build()
