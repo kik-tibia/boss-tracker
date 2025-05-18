@@ -74,23 +74,35 @@ class BossTrackerRepo(tx: Transactor[IO]) {
 
   def getOtherRaidsStage1(area: String): IO[List[RaidTypeDto]] = {
     sql"""
-    SELECT rt.*, MAX(r.start_date)
-    FROM raid_type rt
-    LEFT JOIN raid r ON r.raid_type_id = rt.id
-    WHERE rt.area = $area
-    GROUP BY rt.id
+      SELECT rt.*, MAX(r.start_date)
+      FROM raid_type rt
+      LEFT JOIN raid r ON r.raid_type_id = rt.id
+      WHERE rt.area = $area
+      GROUP BY rt.id
     """.query[RaidTypeDto].to[List].transact(tx)
   }
 
   def getOtherRaidsStage2(area: String, subarea: String): IO[List[RaidTypeDto]] = {
     sql"""
-    SELECT rt.*, MAX(r.start_date)
-    FROM raid_type rt
-    LEFT JOIN raid r ON r.raid_type_id = rt.id
-    WHERE rt.area = $area
-    AND rt.subarea = $subarea
-    GROUP BY rt.id
+      SELECT rt.*, MAX(r.start_date)
+      FROM raid_type rt
+      LEFT JOIN raid r ON r.raid_type_id = rt.id
+      WHERE rt.area = $area
+      AND rt.subarea = $subarea
+      GROUP BY rt.id
     """.query[RaidTypeDto].to[List].transact(tx)
+  }
+
+  def getPreviousRaidOfSameType(raid_id: UUID): IO[Option[RaidRow]] = {
+    sql"""
+      WITH TARGET AS
+        (SELECT raid_type_id, start_date FROM raid WHERE raid_id = $raid_id)
+      SELECT r2.*
+      FROM raid r2
+      JOIN TARGET t on r2.raid_type_id = t.raid_type_id
+      WHERE r2.start_date < t.start_date
+      ORDER BY r2.start_date DESC LIMIT 1
+    """.query[RaidRow].option.transact(tx)
   }
 
   // Opens multiple connections for each uuid but there should never be more than 10 or 20

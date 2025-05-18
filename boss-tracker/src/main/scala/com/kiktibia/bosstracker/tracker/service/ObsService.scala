@@ -22,6 +22,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 class ObsService(
@@ -121,14 +122,53 @@ class ObsService(
             )
           yield ()
         } else IO.unit
+      _ <- updatedRaids.filter(_.raidType.isDefined).map(checkIfMetadataCorrect).sequence
     yield ()
   }
 
-  private def calculateProbabilities(raid: RaidWithCandidates): RaidWithProbabilities = {
-    def zdtToSS(zdt: ZonedDateTime) = {
-      val zdtAt10am = ZonedDateTime.of(zdt.toLocalDate, LocalTime.of(10, 0), zone)
-      if (zdt.isBefore(zdtAt10am)) zdtAt10am.minusDays(1) else zdtAt10am
+  private def checkIfMetadataCorrect(raid: RaidDto): IO[Unit] = {
+    val raidStart = raid.startDate.toInstant.atZone(zone)
+    raid.raidType match {
+      case Some(raidType) =>
+        for
+          maybePreviousRaid <- repo.getPreviousRaidOfSameType(raid.raidId)
+          _ <- maybePreviousRaid match {
+            case Some(previousRaid) =>
+              val previousRaidSS = zdtToSS(previousRaid.startDate.toInstant.atZone(zone)).toLocalDate
+              val thisRaidSS = zdtToSS(raidStart).toLocalDate
+              val interval = ChronoUnit.DAYS.between(previousRaidSS, thisRaidSS)
+              (raidType.windowMin, raidType.windowMax) match {
+                case (Some(windowMin), Some(windowMax)) =>
+                  if (interval < windowMin || interval > windowMax)
+                    discordBot.sendRaidMessage(
+                      s"Raid `${raidType.name}` (ID `${raid.raidId}`) occurred after an interval of $interval days. Current window for this raid type is set to $windowMin - $windowMax days. Consider updating the raid type metadata."
+                    )
+                case _ => ()
+              }
+              IO.unit
+            case None => IO.unit
+          }
+          nextSS = zdtToSS(raidStart).plusDays(1)
+          minsBeforeSS = Duration.between(raidStart, nextSS).toMinutes
+          _ <-
+            if (minsBeforeSS < raidType.duration.getOrElse(1) * 60) {
+              discordBot.sendRaidMessage(
+                s"Raid `${raidType.name}` (ID `${raid.raidId}`) occurred $minsBeforeSS minutes before SS. Current duration for this raid type is set to ${raidType.duration
+                    .getOrElse(1)} hour(s). Consider updating the raid type metadata."
+              )
+              IO.unit
+            } else IO.unit
+        yield ()
+      case _ => IO.unit
     }
+  }
+
+  private def zdtToSS(zdt: ZonedDateTime) = {
+    val zdtAt10am = ZonedDateTime.of(zdt.toLocalDate, LocalTime.of(10, 0), zone)
+    if (zdt.isBefore(zdtAt10am)) zdtAt10am.minusDays(1) else zdtAt10am
+  }
+
+  private def calculateProbabilities(raid: RaidWithCandidates): RaidWithProbabilities = {
     val raidStart: ZonedDateTime = raid.raid.startDate.toInstant.atZone(zone)
     val currentSS: ZonedDateTime = zdtToSS(raidStart)
     val candidatesWithTimeLeft = raid.candidates.flatMap { c =>
@@ -144,7 +184,7 @@ class ObsService(
           if (raidStart.isBefore(windowStart) || raidStart.isAfter(windowEnd))
             None
           else {
-            val daysInWindow = Duration.between(currentSS, windowEnd).toDays
+            val daysInWindow = ChronoUnit.DAYS.between(currentSS.toLocalDate, windowEnd.toLocalDate)
             val lastRaidFractionIntoDay = Duration.between(ssOfLast, lastZdt).toSeconds / 86400.0
             val weightedEndSecondsInWindow =
               Duration.between(raidStart, windowEnd).toSeconds

@@ -182,6 +182,16 @@ class DiscordBot(cfg: Config) {
       .map(_.flatten)
   }
 
+  def sendRaidMessage(message: String): Unit = {
+    guilds.map { guild =>
+      guild
+        .getTextChannels()
+        .asScala
+        .find(guildChannel => cfg.bot.raidChannelNames.exists(c => guildChannel.getName().endsWith(c)))
+        .foreach(_.sendMessage(message).queue())
+    }
+  }
+
   private def editableSend(embed: MessageEmbed, guild: Guild, channelNames: List[String]): IO[Option[Message]] = {
     guild
       .getTextChannels()
