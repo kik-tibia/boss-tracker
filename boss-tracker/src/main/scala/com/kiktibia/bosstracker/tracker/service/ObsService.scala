@@ -151,7 +151,7 @@ class ObsService(
           nextSS = zdtToSS(raidStart).plusDays(1)
           minsBeforeSS = Duration.between(raidStart, nextSS).toMinutes
           _ <-
-            if (minsBeforeSS < raidType.duration.getOrElse(1) * 60) {
+            if (minsBeforeSS < raidType.duration.getOrElse(0) * 60) {
               discordBot.sendRaidMessage(
                 s"Raid `${raidType.name}` (ID `${raid.raidId}`) occurred $minsBeforeSS minutes before SS. Current duration for this raid type is set to ${raidType.duration
                     .getOrElse(1)} hour(s). Consider updating the raid type metadata."
@@ -185,7 +185,7 @@ class ObsService(
             None
           else {
             val daysInWindow = ChronoUnit.DAYS.between(currentSS.toLocalDate, windowEnd.toLocalDate)
-            val lastRaidFractionIntoDay = Duration.between(ssOfLast, lastZdt).toSeconds / 86400.0
+            val lastRaidFractionIntoDay = ChronoUnit.SECONDS.between(ssOfLast, lastZdt) / 86400.0
             val weightedEndSecondsInWindow =
               Duration.between(raidStart, windowEnd).toSeconds
                 - (daysInWindow * maybeDuration.getOrElse(1) * 3600)
