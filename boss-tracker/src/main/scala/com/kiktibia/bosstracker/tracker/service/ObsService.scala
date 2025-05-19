@@ -184,11 +184,17 @@ class ObsService(
           if (raidStart.isBefore(windowStart) || raidStart.isAfter(windowEnd))
             None
           else {
+            // The integer number of days remaining in the window
             val daysInWindow = ChronoUnit.DAYS.between(currentSS.toLocalDate, windowEnd.toLocalDate)
+            // The fraction (0 to 1) into the day that the last raid occurred - e.g. 16:00 = 0.25, 06:00 = 0.8333...
             val lastRaidFractionIntoDay = ChronoUnit.SECONDS.between(ssOfLast, lastZdt) / 86400.0
-            val secondsInWindow =
-              (ChronoUnit.SECONDS
-                .between(raidStart, windowEnd) - (daysInWindow * maybeDuration.getOrElse(1) * 3600)).toDouble
+            // The total number of seconds left in the window across all days, taking into account hours the raid can't occur (close to SS)
+            val secondsInWindow = (ChronoUnit.SECONDS.between(raidStart, windowEnd)
+              - (daysInWindow * maybeDuration.getOrElse(1) * 3600)).toDouble
+            // If a raid occurs shortly after SS, the first day of the window is higher chance than the last day of the window
+            // Conversely, if a raid occurs shortly before SS, the last day of the window is higher chance than the first day
+            // These chances approach 0% and 100% depending on how close to SS the raid occurred
+            // The following two vals (weighted seconds) take this into account
             val weightedEndSecondsInWindow =
               if (currentSS.plusDays(1) == windowEnd) secondsInWindow
               else secondsInWindow - (1 - lastRaidFractionIntoDay) * (86400 - maybeDuration.getOrElse(1) * 3600)
@@ -203,6 +209,14 @@ class ObsService(
         case _ => None
       }
     }
+    // Now we have the time left, in seconds, for each candidate raid
+    // This time is weighted to take into account lower probabilities for the start and end of the window
+    // The reciprocal of this time can be thought of as the instantaneous chance that a raid will occur at that exact second
+    // So to work out the probability that a raid occurs first out of all other events, we use this formula
+    // P_i is the probability that raid i occurs first
+    // p_i is the instantanous chance above (i.e. the reciprocal of the weighted window)
+    // P_i = p_i / (p_1 + p_2 + ... p_n)
+    // And to avoid any issues with floating point precision for small numbers, we just multiply each p_i by a large number (timeSum)
     val timeSum = candidatesWithTimeLeft.map(_._2).sum
     val denominator = candidatesWithTimeLeft.map(c => timeSum / c._2).sum
     val probabilities = candidatesWithTimeLeft
