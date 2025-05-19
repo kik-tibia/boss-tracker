@@ -186,13 +186,16 @@ class ObsService(
           else {
             val daysInWindow = ChronoUnit.DAYS.between(currentSS.toLocalDate, windowEnd.toLocalDate)
             val lastRaidFractionIntoDay = ChronoUnit.SECONDS.between(ssOfLast, lastZdt) / 86400.0
+            val secondsInWindow =
+              (ChronoUnit.SECONDS
+                .between(raidStart, windowEnd) - (daysInWindow * maybeDuration.getOrElse(1) * 3600)).toDouble
             val weightedEndSecondsInWindow =
-              ChronoUnit.SECONDS.between(raidStart, windowEnd)
-                - (daysInWindow * maybeDuration.getOrElse(1) * 3600)
-                - (1 - lastRaidFractionIntoDay) * (86400 - maybeDuration.getOrElse(1) * 3600)
+              if (currentSS.plusDays(1) == windowEnd) secondsInWindow
+              else secondsInWindow - (1 - lastRaidFractionIntoDay) * (86400 - maybeDuration.getOrElse(1) * 3600)
             val weightedStartEndSecondsInWindow =
               if (currentSS == windowStart) weightedEndSecondsInWindow / (1 - lastRaidFractionIntoDay)
               else weightedEndSecondsInWindow
+
             Some(c, weightedStartEndSecondsInWindow)
           }
         case (None, _, Some(windowMax), maybeDuration, _, _) =>
