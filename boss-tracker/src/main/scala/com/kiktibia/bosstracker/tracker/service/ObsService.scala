@@ -112,6 +112,7 @@ class ObsService(
               candidates.map(c => RaidWithCandidates(raid, c))
             }.sequence
             raidsWithProbabilities = raidsWithCandidates.map(calculateProbabilities)
+            _ = logProbabilities(raidsWithProbabilities)
             embed = discordBot.generateRaidEmbed(raidsWithProbabilities)
             discordMessages <- repo.getDiscordMessages("raids", mostRecentSSTime)
             newMessages <- discordBot.createOrUpdateEmbeds(embed, discordMessages, alerts)
@@ -124,6 +125,16 @@ class ObsService(
         } else IO.unit
       _ <- updatedRaids.filter(_.raidType.isDefined).map(checkIfMetadataCorrect).sequence
     yield ()
+  }
+
+  private def logProbabilities(raids: List[RaidWithProbabilities]): Unit = {
+    println("--- Probabilities ---")
+    raids.filter(_.probabilities.nonEmpty).foreach { raid =>
+      println(raid.raid.startDate)
+      raid.probabilities.sortBy(-_.probability).foreach { p =>
+        println(f"${p.probability * 100}%.2f%% - ${p.raidType.name}")
+      }
+    }
   }
 
   private def checkIfMetadataCorrect(raid: RaidDto): IO[Unit] = {
