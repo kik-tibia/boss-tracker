@@ -160,7 +160,7 @@ class ObsService(
             case None => IO.unit
           }
           nextSS = zdtToSS(raidStart).plusDays(1)
-          minsBeforeSS = Duration.between(raidStart, nextSS).toMinutes
+          minsBeforeSS = ChronoUnit.MINUTES.between(raidStart, nextSS)
           _ <-
             if (minsBeforeSS < raidType.duration.getOrElse(0) * 60) {
               discordBot.sendRaidMessage(
@@ -185,7 +185,7 @@ class ObsService(
     val candidatesWithTimeLeft = raid.candidates.flatMap { c =>
       (c.lastOccurrence, c.windowMin, c.windowMax, c.duration, c.eventStart, c.eventEnd) match {
         case (_, _, _, _, Some(eventStart), Some(eventEnd)) if !insideEvent(raidStart, eventStart, eventEnd) => None
-        case (_, _, _, Some(duration), _, _) if Duration.between(raidStart, currentSS.plusDays(1)).toHours < duration =>
+        case (_, _, _, Some(duration), _, _) if ChronoUnit.HOURS.between(raidStart, currentSS.plusDays(1)) < duration =>
           None
         case (Some(lastOccurrence), Some(windowMin), Some(windowMax), maybeDuration, _, _) =>
           val lastZdt = lastOccurrence.toInstant.atZone(zone)
