@@ -88,7 +88,10 @@ class BossTrackerRepo(tx: Transactor[IO]) {
       FROM raid_type rt
       LEFT JOIN raid r ON r.raid_type_id = rt.id
       WHERE rt.area = $area
-      AND rt.subarea = $subarea
+      AND (
+           ($subarea = 'None' AND rt.subarea IS NULL)
+        OR ($subarea <> 'None' AND rt.subarea = $subarea)
+      )
       GROUP BY rt.id
     """.query[RaidTypeDto].to[List].transact(tx)
   }

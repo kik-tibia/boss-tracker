@@ -24,6 +24,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.UUID
+import java.time.Instant
 
 class ObsService(
     fileIO: FileIO,
@@ -81,6 +82,7 @@ class ObsService(
   def checkForRaidUpdates(): IO[Unit] = {
     val raidData: IO[List[Raid]] = fileIO.parseRaidData().map(s => parser.decode[List[Raid]](s)).map(_.getOrElse(Nil))
     for
+      raidDataModifiedTime <- fileIO.raidDataModifiedTime()
       data <- raidData
       latestObsRaids = data
         .filter(_.worldName == "Nefera")
@@ -91,7 +93,7 @@ class ObsService(
         .map { latestObsRaid =>
           for
             repoRaid <- repo.getRaid(latestObsRaid.raidId)
-            didUpdate <- handleUpdate(latestObsRaid, repoRaid)
+            didUpdate <- handleUpdate(latestObsRaid, repoRaid, raidDataModifiedTime.atZone(zone))
             maybeUpdatedRaid <- if (didUpdate) repo.getRaid(latestObsRaid.raidId) else IO.pure(None)
           yield maybeUpdatedRaid
         }
@@ -257,15 +259,24 @@ class ObsService(
     }
   }
 
-  private def handleUpdate(obsRaid: Raid, maybeRaidDto: Option[RaidDto]): IO[Boolean] = {
+  private def handleUpdate(obsRaid: Raid, maybeRaidDto: Option[RaidDto], modifiedTime: ZonedDateTime): IO[Boolean] = {
+    val timeLeftToRaidStartFromObs = ChronoUnit.SECONDS.between(modifiedTime, obsRaid.startDate)
+
+    // If it's less than 14 minutes and 55 seconds to the raid start and it still has no subarea in the OBS response,
+    // change the subarea to the string "None", which is then specially handled in the database call to find raids with no subarea
+    val obsRaidUpdated =
+      if (timeLeftToRaidStartFromObs < (15 * 60 - 5) && obsRaid.subareaName.isEmpty)
+        obsRaid.copy(subareaName = Some("None"))
+      else obsRaid
+
     maybeRaidDto match {
       case None =>
-        upsertRaid(obsRaid)
+        upsertRaid(obsRaidUpdated)
       case Some(raidDto) =>
-        if (raidDto.subarea.isEmpty && obsRaid.subareaName.isDefined) {
-          upsertRaid(obsRaid)
-        } else if (raidDto.raidType.isEmpty && obsRaid.raidTypeId != 0) {
-          upsertRaid(obsRaid)
+        if (raidDto.subarea.isEmpty && obsRaidUpdated.subareaName.isDefined) {
+          upsertRaid(obsRaidUpdated)
+        } else if (raidDto.raidType.isEmpty && obsRaidUpdated.raidTypeId != 0) {
+          upsertRaid(obsRaidUpdated)
         } else {
           IO.pure(false)
         }

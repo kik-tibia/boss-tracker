@@ -24,6 +24,7 @@ import scala.io.Source
 import scala.jdk.CollectionConverters.*
 
 import sys.process.*
+import java.time.Instant
 
 class FileIO(cfg: Config) extends CirceCodecs {
 
@@ -124,6 +125,12 @@ class FileIO(cfg: Config) extends CirceCodecs {
     val path = Paths.get(cfg.file.lastMwcPostFileName)
     Files.write(path, date.format(DateTimeFormatter.ISO_DATE_TIME).getBytes())
   }
+
+  def raidDataModifiedTime(): IO[Instant] =
+    IO.blocking {
+      val path = Paths.get(cfg.file.raidDataFile.toString)
+      Files.getLastModifiedTime(path).toInstant
+    }
 
   def parseRaidData(): IO[String] = {
     raidFileSource.use { source =>
