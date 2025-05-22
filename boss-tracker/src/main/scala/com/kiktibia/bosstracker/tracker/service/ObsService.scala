@@ -166,7 +166,7 @@ class ObsService(
           _ <-
             if (minsBeforeSS < raidType.duration.getOrElse(0) * 60) {
               discordBot.sendRaidMessage(
-                s"Raid `${raidType.name}` (ID `${raid.raidId}`) occurred $minsBeforeSS minutes before SS. Current duration for this raid type is set to ${raidType.duration
+                s"Raid `${raidType.name}` (ID `${raid.raidId}`, raid type ID `${raidType.id}`) occurred $minsBeforeSS minutes before SS. Current duration for this raid type is set to ${raidType.duration
                     .getOrElse(1)} hour(s). Consider updating the raid type metadata."
               )
               IO.unit
