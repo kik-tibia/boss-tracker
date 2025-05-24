@@ -195,9 +195,16 @@ class ObsService(
           val ssOfLast = zdtToSS(lastZdt)
           val windowStart = ssOfLast.plusDays(windowMin)
           val windowEnd = ssOfLast.plusDays(windowMax + 1)
-          if ((raidStart.isBefore(windowStart) || raidStart.isAfter(windowEnd)) && c.eventStart.isEmpty)
-            None
-          else {
+
+          if (raidStart.isBefore(windowStart) || raidStart.isAfter(windowEnd)) {
+            c.eventStart match {
+              case None => None
+              case Some(eventStart) => // This case is for event raids, for the first raid since the start of the event
+                val eventStartFull = ZonedDateTime.of(eventStart.withYear(raidStart.getYear), LocalTime.of(10, 0), zone)
+                val assumedWindowEnd = eventStartFull.plusDays((windowMax - windowMin + 1))
+                Some(c, ChronoUnit.SECONDS.between(raidStart, assumedWindowEnd) - (maybeDuration.getOrElse(1) * 3600.0))
+            }
+          } else {
             // The integer number of days remaining in the window
             val daysInWindow = ChronoUnit.DAYS.between(currentSS.toLocalDate, windowEnd.toLocalDate)
             // The fraction (0 to 1) into the day that the last raid occurred - e.g. 16:00 = 0.25, 06:00 = 0.8333...
@@ -218,8 +225,17 @@ class ObsService(
 
             Some(c, weightedStartEndSecondsInWindow)
           }
-        case (None, _, Some(windowMax), maybeDuration, _, _) =>
-          Some(c, windowMax.toDouble * (86400 - maybeDuration.getOrElse(1) * 3600))
+        case (None, Some(windowMin), Some(windowMax), maybeDuration, _, _) =>
+          // Raid has never occurred in database history
+          c.eventStart match {
+            case None =>
+              Some(c, windowMax.toDouble * (86400 - maybeDuration.getOrElse(1) * 3600))
+            case Some(eventStart) => // This case is for event raids, for the first raid since the start of the event
+              val eventStartFull = ZonedDateTime.of(eventStart.withYear(raidStart.getYear), LocalTime.of(10, 0), zone)
+              val assumedWindowEnd = eventStartFull.plusDays((windowMax - windowMin + 1))
+              Some(c, ChronoUnit.SECONDS.between(raidStart, assumedWindowEnd) - (maybeDuration.getOrElse(1) * 3600.0))
+          }
+
         case _ => None
       }
     }
@@ -242,8 +258,8 @@ class ObsService(
   }
 
   private def insideEvent(start: ZonedDateTime, eventStart: LocalDate, eventEnd: LocalDate): Boolean = {
-    val zonedEventStart = ZonedDateTime.of(eventStart, LocalTime.of(10, 0), zone)
-    val zonedEventEnd = ZonedDateTime.of(eventEnd, LocalTime.of(10, 0), zone)
+    val zonedEventStart = ZonedDateTime.of(eventStart.withYear(start.getYear), LocalTime.of(10, 0), zone)
+    val zonedEventEnd = ZonedDateTime.of(eventEnd.withYear(start.getYear), LocalTime.of(10, 0), zone)
     !start.isBefore(zonedEventStart) && !start.isAfter(zonedEventEnd)
   }
 
