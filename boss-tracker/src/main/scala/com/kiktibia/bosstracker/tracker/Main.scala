@@ -7,6 +7,7 @@ import com.kiktibia.bosstracker.config.Config
 import com.kiktibia.bosstracker.tracker.repo.BossTrackerRepo
 import com.kiktibia.bosstracker.tracker.discord.*
 import com.kiktibia.bosstracker.tracker.service.*
+import com.kiktibia.bosstracker.tracker.service.obs.*
 import doobie.util.transactor.Transactor
 import fs2.Stream
 import org.typelevel.log4cats.Logger
@@ -43,7 +44,8 @@ object Main extends IOApp {
     val predictor = new BossPredictor(fileIO)
     val discordBot = new DiscordBot(cfg)
     val bossTrackerService = new BossTrackerService(cfg, fileIO, fetcher, predictor, discordBot)
-    val obsService = new ObsService(fileIO, discordBot, repo)
+    val mwcService = new MwcService(fileIO, discordBot)
+    val raidService = new RaidService(fileIO, discordBot, repo)
 
     Stream
       .fixedRateStartImmediately[IO](30.seconds)
@@ -55,13 +57,12 @@ object Main extends IOApp {
           _ <- fileIO.updateBossStatsRepo()
           _ <- bossTrackerService.handleKilledBossUpdate(today)
           _ <- bossTrackerService.handlePredictionsUpdate(today, now)
-          _ <- obsService.checkForMwcUpdate()
-          _ <- obsService.checkForRaidUpdates()
+          _ <- mwcService.checkForMwcUpdate()
+          _ <- raidService.checkForRaidUpdates()
         yield ()
       }
       .compile
       .drain
       .map(_ => ExitCode.Success)
   }
-
 }

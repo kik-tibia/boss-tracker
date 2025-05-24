@@ -1,4 +1,4 @@
-package com.kiktibia.bosstracker.tracker
+package com.kiktibia.bosstracker.tracker.service.obs
 
 import com.kiktibia.bosstracker.tracker.repo.RaidDto
 import com.kiktibia.bosstracker.tracker.repo.RaidTypeDto
@@ -47,5 +47,4 @@ object ObsModel {
       raid: RaidDto,
       probabilities: List[CandidateProbability]
   )
-
 }

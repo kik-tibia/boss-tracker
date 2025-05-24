@@ -9,8 +9,8 @@ import cats.implicits.*
 import cats.syntax.all.*
 import com.kiktibia.bosstracker.config.Config
 import com.kiktibia.bosstracker.tracker.Model.*
-import com.kiktibia.bosstracker.tracker.ObsModel.Raid
-import com.kiktibia.bosstracker.tracker.ObsModel.RaidWithProbabilities
+import com.kiktibia.bosstracker.tracker.service.obs.ObsModel.Raid
+import com.kiktibia.bosstracker.tracker.service.obs.ObsModel.RaidWithProbabilities
 import com.kiktibia.bosstracker.tracker.repo.DiscordMessageDto
 import com.kiktibia.bosstracker.tracker.repo.RaidDto
 import io.circe.Error
