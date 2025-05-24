@@ -1,4 +1,4 @@
-package com.kiktibia.bosstracker.tracker.service
+package com.kiktibia.bosstracker.tracker.discord
 
 import cats.Applicative
 import cats.Monad
@@ -31,6 +31,9 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.CompletableFuture
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
+import net.dv8tion.jda.api.interactions.components.ActionRow
+import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu
+import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu.SelectTarget
 
 class DiscordBot(cfg: Config) {
 

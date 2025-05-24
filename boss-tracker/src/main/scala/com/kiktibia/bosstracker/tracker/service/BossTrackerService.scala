@@ -4,6 +4,7 @@ import cats.data.EitherT
 import cats.effect.IO
 import com.kiktibia.bosstracker.config.Config
 import com.kiktibia.bosstracker.tracker.ObsModel.Raid
+import com.kiktibia.bosstracker.tracker.discord.DiscordBot
 import com.kiktibia.bosstracker.tracker.service.FileIO
 
 import java.time.LocalDate

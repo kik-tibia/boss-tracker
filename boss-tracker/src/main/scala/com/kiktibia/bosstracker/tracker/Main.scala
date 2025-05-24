@@ -5,6 +5,7 @@ import cats.syntax.all.*
 import com.kiktibia.bosstracker.config.AppConfig
 import com.kiktibia.bosstracker.config.Config
 import com.kiktibia.bosstracker.tracker.repo.BossTrackerRepo
+import com.kiktibia.bosstracker.tracker.discord.*
 import com.kiktibia.bosstracker.tracker.service.*
 import doobie.util.transactor.Transactor
 import fs2.Stream

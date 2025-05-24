@@ -5,6 +5,7 @@ import cats.implicits.*
 import com.kiktibia.bosstracker.config.Config
 import com.kiktibia.bosstracker.tracker.CirceCodecs
 import com.kiktibia.bosstracker.tracker.ObsModel.*
+import com.kiktibia.bosstracker.tracker.discord.DiscordBot
 import com.kiktibia.bosstracker.tracker.repo.BossTrackerRepo
 import com.kiktibia.bosstracker.tracker.repo.DiscordMessageDto
 import com.kiktibia.bosstracker.tracker.repo.RaidDto
