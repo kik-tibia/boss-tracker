@@ -195,7 +195,7 @@ class ObsService(
           val ssOfLast = zdtToSS(lastZdt)
           val windowStart = ssOfLast.plusDays(windowMin)
           val windowEnd = ssOfLast.plusDays(windowMax + 1)
-          if (raidStart.isBefore(windowStart) || raidStart.isAfter(windowEnd))
+          if ((raidStart.isBefore(windowStart) || raidStart.isAfter(windowEnd)) && c.eventStart.isEmpty)
             None
           else {
             // The integer number of days remaining in the window
