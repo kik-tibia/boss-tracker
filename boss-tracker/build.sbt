@@ -32,5 +32,6 @@ libraryDependencies ++= Seq(
   "net.dv8tion" % "JDA" % "5.0.0-beta.12",
   "org.tpolecat" %% "doobie-core" % doobieVersion,
   "org.tpolecat" %% "doobie-postgres" % doobieVersion,
-  "org.postgresql" % "postgresql" % "42.5.3"
+  "org.postgresql" % "postgresql" % "42.5.3",
+  "org.scalameta" %% "munit" % "1.1.1" % Test
 )
