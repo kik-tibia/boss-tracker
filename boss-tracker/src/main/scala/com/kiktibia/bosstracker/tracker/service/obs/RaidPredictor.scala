@@ -15,13 +15,11 @@ object RaidPredictor {
 
   def calculateProbabilities(raid: RaidWithCandidates): RaidWithProbabilities = {
     val raidStart: ZonedDateTime = raid.raid.startDate.toInstant.atZone(zone)
-    val candidatesWithTimeLeft = raid.candidates.flatMap(c => calculateWeightedTimeLeft(c, raidStart))
-    // Now we have the time left, in seconds, for each candidate raid
-    // This time is weighted to take into account lower probabilities for the start and end of the window
-    // The reciprocal of this time can be thought of as the instantaneous chance that a raid will occur at that exact second
-    // So to work out the probability that a raid occurs first out of all other events, we use this formula
-    // P_i is the probability that raid i occurs first
-    // p_i is the instantanous chance above (i.e. the reciprocal of the weighted window)
+    val candidatesWithTimeLeft =
+      raid.candidates.flatMap(c => calculateInstantaneousChance(c, raidStart).map(i => (c, i)))
+    // To work out the probability that a raid occurs first out of all other events, we use this formula
+    // P_i is the probability that raid i occurs before all other raids (what we are trying to calculate)
+    // p_i is the instantaneous chance
     // P_i = p_i / (p_1 + p_2 + ... p_n)
     // And to avoid any issues with floating point precision for small numbers, we just multiply each p_i by a large number (timeSum)
     val timeSum = candidatesWithTimeLeft.map(_._2).sum
@@ -34,7 +32,12 @@ object RaidPredictor {
     RaidWithProbabilities(raid.raid, probabilities)
   }
 
-  def calculateWeightedTimeLeft(c: RaidTypeDto, raidStart: ZonedDateTime): Option[(RaidTypeDto, Double)] = {
+  /** Calculates the instantaneous chance of this raid happening in the next second. This is typically just the number
+    * of seconds left in the raid's window, but is weighted to take into account lower probabilities of the raid
+    * happening in the first and last days of the window. Returns the reciprocal, e.g. a raid with 5% chance to occur in
+    * the next second returns 20.
+    */
+  def calculateInstantaneousChance(c: RaidTypeDto, raidStart: ZonedDateTime): Option[Double] = {
     val currentSS: ZonedDateTime = zdtToSS(raidStart)
     (c.lastOccurrence, c.windowMin, c.windowMax, c.duration, c.eventStart, c.eventEnd) match {
       case (_, _, _, _, Some(eventStart), Some(eventEnd)) if !insideEvent(raidStart, eventStart, eventEnd) => None
@@ -52,7 +55,7 @@ object RaidPredictor {
             case Some(eventStart) => // This case is for event raids, for the first raid since the start of the event
               val eventStartFull = ZonedDateTime.of(eventStart.withYear(raidStart.getYear), LocalTime.of(10, 0), zone)
               val assumedWindowEnd = eventStartFull.plusDays((windowMax - windowMin + 1))
-              Some(c, ChronoUnit.SECONDS.between(raidStart, assumedWindowEnd) - (maybeDuration.getOrElse(1) * 3600.0))
+              Some(ChronoUnit.SECONDS.between(raidStart, assumedWindowEnd) - (maybeDuration.getOrElse(1) * 3600.0))
           }
         } else {
           // The integer number of days remaining in the window
@@ -73,17 +76,17 @@ object RaidPredictor {
             if (currentSS == windowStart) weightedEndSecondsInWindow / (1 - lastRaidFractionIntoDay)
             else weightedEndSecondsInWindow
 
-          Some(c, weightedStartEndSecondsInWindow)
+          Some(weightedStartEndSecondsInWindow)
         }
       case (None, Some(windowMin), Some(windowMax), maybeDuration, _, _) =>
         // Raid has never occurred in database history
         c.eventStart match {
           case None =>
-            Some(c, windowMax.toDouble * (86400 - maybeDuration.getOrElse(1) * 3600))
+            Some(windowMax.toDouble * (86400 - maybeDuration.getOrElse(1) * 3600))
           case Some(eventStart) => // This case is for event raids, for the first raid since the start of the event
             val eventStartFull = ZonedDateTime.of(eventStart.withYear(raidStart.getYear), LocalTime.of(10, 0), zone)
             val assumedWindowEnd = eventStartFull.plusDays((windowMax - windowMin + 1))
-            Some(c, ChronoUnit.SECONDS.between(raidStart, assumedWindowEnd) - (maybeDuration.getOrElse(1) * 3600.0))
+            Some(ChronoUnit.SECONDS.between(raidStart, assumedWindowEnd) - (maybeDuration.getOrElse(1) * 3600.0))
         }
       case _ => None
     }
