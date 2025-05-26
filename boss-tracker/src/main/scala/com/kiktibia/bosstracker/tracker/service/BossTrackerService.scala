@@ -14,11 +14,11 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 class BossTrackerService(
-    cfg: Config,
-    fileIO: FileIO,
-    fetcher: BossDataFetcher,
-    predictor: BossPredictor,
-    discordBot: DiscordBot
+  cfg: Config,
+  fileIO: FileIO,
+  fetcher: BossDataFetcher,
+  predictor: BossPredictor,
+  discordBot: DiscordBot
 ) {
 
   def handleKilledBossUpdate(today: LocalDate): IO[Unit] =

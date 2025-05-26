@@ -40,6 +40,55 @@ object RaidPredictor {
   def calculateInstantaneousChance(c: RaidTypeDto, raidStart: OffsetDateTime): Option[Double] = {
     val raidStartZdt: ZonedDateTime = raidStart.toInstant.atZone(zone)
     val currentSS: ZonedDateTime = zdtToSS(raidStartZdt)
+
+    def chanceForNormalRaid(
+      lastZdt: ZonedDateTime,
+      maybeDuration: Option[Int],
+      ssOfLast: ZonedDateTime,
+      windowEnd: ZonedDateTime,
+      windowStart: ZonedDateTime
+    ): Double = {
+      // The integer number of days remaining in the window
+      val daysInWindow = ChronoUnit.DAYS.between(currentSS.toLocalDate, windowEnd.toLocalDate)
+      // The fraction (0 to 1) into the day that the last raid occurred - e.g. 16:00 = 0.25, 06:00 = 0.8333...
+      val lastRaidFractionIntoDay = ChronoUnit.SECONDS.between(ssOfLast, lastZdt) / 86400.0
+      // The total number of seconds left in the window across all days, taking into account hours the raid can't occur (close to SS)
+      val secondsInWindow = (ChronoUnit.SECONDS.between(raidStartZdt, windowEnd)
+        - (daysInWindow * maybeDuration.getOrElse(1) * 3600)).toDouble
+
+      // If a raid occurs shortly after SS, the first day of the window is higher chance than the last day of the window
+      // Conversely, if a raid occurs shortly before SS, the last day of the window is higher chance than the first day
+      // These chances approach 0% and 100% depending on how close to SS the raid occurred
+      // The following statement takes this into account
+      val weightedSecondsInWindow =
+        if (currentSS.plusDays(1) == windowEnd) secondsInWindow
+        else {
+          val weightedEndSecondsInWindow =
+            secondsInWindow - (1 - lastRaidFractionIntoDay) * (86400 - maybeDuration.getOrElse(1) * 3600)
+          if (currentSS == windowStart) {
+            weightedEndSecondsInWindow / (1 - lastRaidFractionIntoDay)
+          } else {
+            weightedEndSecondsInWindow
+          }
+        }
+      weightedSecondsInWindow
+    }
+
+    // This case is for event raids, for the first raid since the start of the event
+    // It's not mathematically correct but doesn't matter too much
+    def chanceForFirstInEvent(
+      eventStart: LocalDate,
+      maybeDuration: Option[Int],
+      windowMax: Int,
+      windowMin: Int
+    ): Double = {
+      val eventStartFull =
+        ZonedDateTime.of(eventStart.withYear(raidStartZdt.getYear), LocalTime.of(10, 0), zone)
+      val assumedWindowEnd = eventStartFull.plusDays((windowMax - windowMin + 1))
+      val daysInWindow = ChronoUnit.DAYS.between(eventStartFull, assumedWindowEnd)
+      ChronoUnit.SECONDS.between(raidStartZdt, assumedWindowEnd) - (daysInWindow * maybeDuration.getOrElse(1) * 3600.0)
+    }
+
     (c.lastOccurrence, c.windowMin, c.windowMax, c.duration, c.eventStart, c.eventEnd) match {
       case (_, _, _, _, Some(eventStart), Some(eventEnd))
           if !insideEvent(raidStartZdt, eventStart, eventEnd) => None
@@ -55,52 +104,18 @@ object RaidPredictor {
           c.eventStart match {
             case None => None
             case Some(eventStart) =>
-              // This case is for event raids, for the first raid since the start of the event
-              // It's not mathematically correct but doesn't matter too much
-              val eventStartFull =
-                ZonedDateTime.of(eventStart.withYear(raidStartZdt.getYear), LocalTime.of(10, 0), zone)
-              val assumedWindowEnd = eventStartFull.plusDays((windowMax - windowMin + 1))
-              val daysInWindow = ChronoUnit.DAYS.between(eventStartFull, assumedWindowEnd)
-              Some(ChronoUnit.SECONDS.between(raidStartZdt, assumedWindowEnd)
-                - (daysInWindow * maybeDuration.getOrElse(1) * 3600.0))
+              Some(chanceForFirstInEvent(eventStart, maybeDuration, windowMax, windowMin))
           }
         } else {
-          // The integer number of days remaining in the window
-          val daysInWindow = ChronoUnit.DAYS.between(currentSS.toLocalDate, windowEnd.toLocalDate)
-          // The fraction (0 to 1) into the day that the last raid occurred - e.g. 16:00 = 0.25, 06:00 = 0.8333...
-          val lastRaidFractionIntoDay = ChronoUnit.SECONDS.between(ssOfLast, lastZdt) / 86400.0
-          // The total number of seconds left in the window across all days, taking into account hours the raid can't occur (close to SS)
-          val secondsInWindow = (ChronoUnit.SECONDS.between(raidStartZdt, windowEnd)
-            - (daysInWindow * maybeDuration.getOrElse(1) * 3600)).toDouble
-
-          // If a raid occurs shortly after SS, the first day of the window is higher chance than the last day of the window
-          // Conversely, if a raid occurs shortly before SS, the last day of the window is higher chance than the first day
-          // These chances approach 0% and 100% depending on how close to SS the raid occurred
-          // The following statement takes this into account
-          val weightedSecondsInWindow =
-            if (currentSS.plusDays(1) == windowEnd) secondsInWindow
-            else {
-              val weightedEndSecondsInWindow =
-                secondsInWindow - (1 - lastRaidFractionIntoDay) * (86400 - maybeDuration.getOrElse(1) * 3600)
-              if (currentSS == windowStart) {
-                weightedEndSecondsInWindow / (1 - lastRaidFractionIntoDay)
-              } else {
-                weightedEndSecondsInWindow
-              }
-            }
-          Some(weightedSecondsInWindow)
+          Some(chanceForNormalRaid(lastZdt, maybeDuration, ssOfLast, windowEnd, windowStart))
         }
       case (None, Some(windowMin), Some(windowMax), maybeDuration, _, _) =>
         // Raid has never occurred in database history
         c.eventStart match {
           case None =>
             Some(windowMax.toDouble * (86400 - maybeDuration.getOrElse(1) * 3600))
-          case Some(eventStart) => // This case is for event raids, for the first raid since the start of the event
-            val eventStartFull = ZonedDateTime.of(eventStart.withYear(raidStartZdt.getYear), LocalTime.of(10, 0), zone)
-            val assumedWindowEnd = eventStartFull.plusDays((windowMax - windowMin + 1))
-            val daysInWindow = ChronoUnit.DAYS.between(eventStartFull, assumedWindowEnd)
-            Some(ChronoUnit.SECONDS.between(raidStartZdt, assumedWindowEnd)
-              - (daysInWindow * maybeDuration.getOrElse(1) * 3600.0))
+          case Some(eventStart) =>
+            Some(chanceForFirstInEvent(eventStart, maybeDuration, windowMax, windowMin))
         }
       case _ => None
     }
