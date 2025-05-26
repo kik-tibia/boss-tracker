@@ -69,4 +69,148 @@ class RaidPredictorTest extends FunSuite {
     assertEqualsDouble(resultMap("Raid 2"), (1 / 3.0) / (1 / 2.0 + 1 / 3.0 + 1 / 5.0), 1e-6)
     assertEqualsDouble(resultMap("Raid 3"), (1 / 5.0) / (1 / 2.0 + 1 / 3.0 + 1 / 5.0), 1e-6)
   }
+
+  test("instantaneous chance is calculated correctly for a raid in its last day") {
+    val raidType =
+      defaultRaidTypeDto.copy(lastOccurrence = Some(OffsetDateTime.of(2025, 6, 8, 14, 0, 0, 0, ZoneOffset.UTC)))
+    val raidStart = OffsetDateTime.of(2025, 6, 18, 22, 0, 0, 0, ZoneOffset.UTC)
+    val expected = Some(3600 * 6)
+    val chance = RaidPredictor
+      .calculateInstantaneousChance(raidType, raidStart)
+    assertOptionDouble(chance, expected)
+  }
+
+  test("instantaneous chance is calculated correctly for a raid in the middle of its window") {
+    val raidType =
+      defaultRaidTypeDto.copy(lastOccurrence = Some(OffsetDateTime.of(2025, 6, 10, 14, 0, 0, 0, ZoneOffset.UTC)))
+    val raidStart = OffsetDateTime.of(2025, 6, 18, 22, 0, 0, 0, ZoneOffset.UTC)
+    val expected = Some(3600 * 6 + 3600 * 20 + 3600 * 20 / 4)
+    val chance = RaidPredictor
+      .calculateInstantaneousChance(raidType, raidStart)
+    assertOptionDouble(chance, expected)
+  }
+
+  test("instantaneous chance is calculated correctly for a raid in its first day") {
+    val raidType =
+      defaultRaidTypeDto.copy(lastOccurrence = Some(OffsetDateTime.of(2025, 6, 10, 14, 0, 0, 0, ZoneOffset.UTC)))
+    val raidStart = OffsetDateTime.of(2025, 6, 15, 22, 0, 0, 0, ZoneOffset.UTC)
+    val expected = Some((3600 * 6 + 3600 * 20 * 4 + 3600 * 20 / 4) / 0.75)
+    val chance = RaidPredictor
+      .calculateInstantaneousChance(raidType, raidStart)
+    assertOptionDouble(chance, expected)
+  }
+
+  test("instantaneous chance is calculated correctly for a raid that has a one day window") {
+    val raidType =
+      defaultRaidTypeDto.copy(
+        windowMin = Some(5),
+        windowMax = Some(5),
+        lastOccurrence = Some(OffsetDateTime.of(2025, 6, 10, 14, 0, 0, 0, ZoneOffset.UTC))
+      )
+    val raidStart = OffsetDateTime.of(2025, 6, 15, 22, 0, 0, 0, ZoneOffset.UTC)
+    val expected = Some(3600 * 6)
+    val chance = RaidPredictor
+      .calculateInstantaneousChance(raidType, raidStart)
+    assertOptionDouble(chance, expected)
+  }
+
+  test("instantaneous chance returns None if it's too close to SS for the raid's duration") {
+    val raidType =
+      defaultRaidTypeDto.copy(lastOccurrence = Some(OffsetDateTime.of(2025, 6, 10, 14, 0, 0, 0, ZoneOffset.UTC)))
+    val raidStart = OffsetDateTime.of(2025, 6, 19, 6, 0, 0, 0, ZoneOffset.UTC)
+    val expected = None
+    val chance = RaidPredictor
+      .calculateInstantaneousChance(raidType, raidStart)
+    assertOptionDouble[Double](chance, expected)
+  }
+
+  test("instantaneous chance is just zero to max window for raids that have no recorded history") {
+    val raidType =
+      defaultRaidTypeDto.copy(
+        windowMax = Some(10),
+        lastOccurrence = None
+      )
+    val raidStart = OffsetDateTime.of(2025, 6, 15, 22, 0, 0, 0, ZoneOffset.UTC)
+    val expected = Some(3600 * 20 * 10)
+    val chance = RaidPredictor
+      .calculateInstantaneousChance(raidType, raidStart)
+    assertOptionDouble(chance, expected)
+  }
+
+  test("instantaneous chance is calculated correctly for an event raid if the event is active") {
+    val raidType =
+      defaultRaidTypeDto.copy(
+        windowMin = Some(1),
+        windowMax = Some(2),
+        eventStart = Some(LocalDate.of(2000, 6, 1)),
+        eventEnd = Some(LocalDate.of(2000, 7, 1)),
+        lastOccurrence = Some(OffsetDateTime.of(2025, 6, 10, 14, 0, 0, 0, ZoneOffset.UTC)),
+        duration = Some(1)
+      )
+    val raidStart = OffsetDateTime.of(2025, 6, 12, 22, 0, 0, 0, ZoneOffset.UTC)
+    val expected = Some(3600 * 9)
+    val chance = RaidPredictor
+      .calculateInstantaneousChance(raidType, raidStart)
+    assertOptionDouble(chance, expected)
+  }
+
+  test("instantaneous chance returns None for an event raid if the event is inactive") {
+    val raidType =
+      defaultRaidTypeDto.copy(
+        windowMin = Some(1),
+        windowMax = Some(2),
+        eventStart = Some(LocalDate.of(2000, 7, 1)),
+        eventEnd = Some(LocalDate.of(2000, 8, 1)),
+        lastOccurrence = Some(OffsetDateTime.of(2025, 6, 10, 14, 0, 0, 0, ZoneOffset.UTC)),
+        duration = Some(1)
+      )
+    val raidStart = OffsetDateTime.of(2025, 6, 12, 22, 0, 0, 0, ZoneOffset.UTC)
+    val expected = None
+    val chance = RaidPredictor
+      .calculateInstantaneousChance(raidType, raidStart)
+    assertOptionDouble[Double](chance, expected)
+  }
+
+  test("instantaneous chance is calculated correctly for an event raid if it's the first raid of the event") {
+    val raidType =
+      defaultRaidTypeDto.copy(
+        windowMin = Some(1),
+        windowMax = Some(2),
+        eventStart = Some(LocalDate.of(2000, 6, 1)),
+        eventEnd = Some(LocalDate.of(2000, 7, 1)),
+        lastOccurrence = Some(OffsetDateTime.of(2024, 6, 30, 14, 0, 0, 0, ZoneOffset.UTC)),
+        duration = Some(1)
+      )
+    val raidStart = OffsetDateTime.of(2025, 6, 1, 22, 0, 0, 0, ZoneOffset.UTC)
+    val expected = Some(3600 * 9 + 3600 * 23)
+    val chance = RaidPredictor
+      .calculateInstantaneousChance(raidType, raidStart)
+    assertOptionDouble(chance, expected)
+  }
+
+  test("instantaneous chance is calculated correctly for an event raid if there is no recorded history") {
+    val raidType =
+      defaultRaidTypeDto.copy(
+        windowMin = Some(1),
+        windowMax = Some(2),
+        eventStart = Some(LocalDate.of(2000, 6, 1)),
+        eventEnd = Some(LocalDate.of(2000, 7, 1)),
+        lastOccurrence = None,
+        duration = Some(1)
+      )
+    val raidStart = OffsetDateTime.of(2025, 6, 1, 22, 0, 0, 0, ZoneOffset.UTC)
+    val expected = Some(3600 * 9 + 3600 * 23)
+    val chance = RaidPredictor
+      .calculateInstantaneousChance(raidType, raidStart)
+    assertOptionDouble(chance, expected)
+  }
+
+  private def assertOptionDouble[T: Numeric](obtained: Option[Double], expected: Option[T]) = {
+    val num = implicitly[Numeric[T]]
+    (obtained, expected.map(num.toDouble)) match {
+      case (Some(o), Some(e)) => assertEqualsDouble(o, e, 1e-6)
+      case (None, None) => ()
+      case _ => fail(s"Expected $expected, got $obtained")
+    }
+  }
 }
