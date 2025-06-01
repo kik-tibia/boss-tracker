@@ -104,7 +104,9 @@ object RaidPredictor {
           c.eventStart match {
             case None => None
             case Some(eventStart) =>
-              Some(chanceForFirstInEvent(eventStart, maybeDuration, windowMax, windowMin))
+              if (raidStartZdt.isAfter(windowEnd))
+                Some(chanceForFirstInEvent(eventStart, maybeDuration, windowMax, windowMin))
+              else None
           }
         } else {
           Some(chanceForNormalRaid(lastZdt, maybeDuration, ssOfLast, windowEnd, windowStart))
