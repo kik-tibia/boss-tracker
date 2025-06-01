@@ -197,11 +197,22 @@ class DiscordBot(cfg: Config, repo: BossTrackerRepo) {
 
   def sendRaidMessage(message: String): Unit = {
     guilds.map { guild =>
-      guild
-        .getTextChannels()
-        .asScala
-        .find(guildChannel => cfg.bot.raidChannelNames.exists(c => guildChannel.getName().endsWith(c)))
+      guild.getTextChannels.asScala
+        .find(guildChannel => cfg.bot.raidChannelNames.exists(c => guildChannel.getName.endsWith(c)))
         .foreach(_.sendMessage(message).queue())
+    }
+  }
+
+  def sendRaidAlertMessage(roleWithMessage: (String, String)): Unit = {
+    val roleName = roleWithMessage._1
+    val message = roleWithMessage._2
+    guilds.map { guild =>
+      val roleTag = guild.getRolesByName(roleName, false).asScala.headOption
+        .fold(s"@$roleName")(r => s"<@&${r.getIdLong}>")
+
+      guild.getTextChannels.asScala
+        .find(guildChannel => cfg.bot.raidAlertChannelNames.exists(c => guildChannel.getName.endsWith(c)))
+        .foreach(_.sendMessage(s"$roleTag $message").queue())
     }
   }
 

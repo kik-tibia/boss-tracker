@@ -25,6 +25,7 @@ class ChooseRolesCommand extends SlashCmd with ButtonCmd {
 
   override def execute(event: SlashCommandInteractionEvent): Unit = {
     event.reply("Choose your roles")
+      .setEphemeral(true)
       .addComponents(makeRows(0, event))
       .queue()
   }

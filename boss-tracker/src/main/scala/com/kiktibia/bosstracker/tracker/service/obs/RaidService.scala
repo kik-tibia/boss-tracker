@@ -25,9 +25,9 @@ import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 class RaidService(
-    fileIO: FileIO,
-    discordBot: DiscordBot,
-    repo: BossTrackerRepo
+  fileIO: FileIO,
+  discordBot: DiscordBot,
+  repo: BossTrackerRepo
 ) {
 
   def checkForRaidUpdates(): IO[Unit] = {
@@ -52,7 +52,6 @@ class RaidService(
         .map(_.flatten)
       _ <-
         if (updatedRaids.nonEmpty) {
-          val alerts = RaidPredictor.noteworthyRaidWarnings(updatedRaids)
           val mostRecentSSTime = getMostRecentSSTime()
           for
             raids <- repo.getRaids(latestObsRaids.map(_.raidId))
@@ -65,13 +64,17 @@ class RaidService(
               candidates.map(c => RaidWithCandidates(raid, c))
             }.sequence
             raidsWithProbabilities = raidsWithCandidates.map(RaidPredictor.calculateProbabilities)
+            warnings = raidsWithProbabilities.flatMap(notableWarnings)
+            alerts = updatedRaids.flatMap(notableAlert)
             _ = RaidPredictor.logProbabilities(raidsWithProbabilities)
             embed = discordBot.generateRaidEmbed(raidsWithProbabilities)
+            _ = warnings.foreach(discordBot.sendRaidAlertMessage)
+            _ = alerts.foreach(discordBot.sendRaidAlertMessage)
             discordMessages <- repo.getDiscordMessages("raids", mostRecentSSTime)
-            newMessages <- discordBot.createOrUpdateEmbeds(embed, discordMessages, alerts)
+            newMessages <- discordBot.createOrUpdateEmbeds(embed, discordMessages)
             _ <- repo.upsertDiscordMessages(
               newMessages.map(m =>
-                DiscordMessageDto(0, mostRecentSSTime, "raids", m.getGuild().getId(), m.getChannel().getId(), m.getId())
+                DiscordMessageDto(0, mostRecentSSTime, "raids", m.getGuild.getId, m.getChannel.getId, m.getId)
               )
             )
           yield ()
@@ -122,6 +125,25 @@ class RaidService(
       case _ => IO.unit
     }
   }
+
+  private def notableWarnings(raidWithProbabilities: RaidWithProbabilities): List[(String, String)] = {
+    raidWithProbabilities.probabilities.filter(_.raidType.rolePrefix.isDefined).map { p =>
+      val prefix = p.raidType.rolePrefix.getOrElse("")
+      val suffix =
+        if (raidWithProbabilities.raid.subarea.isEmpty) "area"
+        else "subarea"
+      (
+        s"$prefix-$suffix",
+        f"`${p.probability * 100}%.2f%%` chance of **${p.raidType.name}** <t:${raidWithProbabilities.raid.startDate.toEpochSecond}:R>"
+      )
+    }
+  }
+
+  private def notableAlert(raid: RaidDto): Option[(String, String)] =
+    for
+      raidType <- raid.raidType
+      rolePrefix <- raidType.rolePrefix
+    yield (s"$rolePrefix-raid", s"**${raidType.name}** raid has started at <t:${raid.startDate.toEpochSecond}:T>")
 
   private def handleUpdate(obsRaid: Raid, maybeRaidDto: Option[RaidDto], modifiedTime: ZonedDateTime): IO[Boolean] = {
     val timeLeftToRaidStartFromObs = ChronoUnit.SECONDS.between(modifiedTime, obsRaid.startDate)

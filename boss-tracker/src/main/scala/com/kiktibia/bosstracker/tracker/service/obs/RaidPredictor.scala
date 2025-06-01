@@ -131,13 +131,6 @@ object RaidPredictor {
     }
   }
 
-  def noteworthyRaidWarnings(raids: List[RaidDto]): List[String] = {
-    raids.flatMap { raid =>
-      if (raid.area.contains("edron") && raid.subarea.isEmpty) Some("Edron raid")
-      else None
-    }
-  }
-
   private def insideEvent(start: ZonedDateTime, eventStart: LocalDate, eventEnd: LocalDate): Boolean = {
     val zonedEventStart = ZonedDateTime.of(eventStart.withYear(start.getYear), LocalTime.of(10, 0), zone)
     val zonedEventEnd = ZonedDateTime.of(eventEnd.withYear(start.getYear), LocalTime.of(10, 0), zone)
