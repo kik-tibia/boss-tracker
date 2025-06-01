@@ -1,10 +1,11 @@
-import munit.FunSuite
-import java.time._
-import java.util.UUID
-import com.kiktibia.bosstracker.tracker.service.obs.RaidPredictor
-import com.kiktibia.bosstracker.tracker.service.obs.ObsModel.RaidWithCandidates
 import com.kiktibia.bosstracker.tracker.repo.RaidDto
 import com.kiktibia.bosstracker.tracker.repo.RaidTypeDto
+import com.kiktibia.bosstracker.tracker.service.obs.ObsModel.RaidWithCandidates
+import com.kiktibia.bosstracker.tracker.service.obs.RaidPredictor
+import munit.FunSuite
+
+import java.time.*
+import java.util.UUID
 
 class RaidPredictorTest extends FunSuite {
   val defaultRaidDto = RaidDto(
@@ -25,6 +26,7 @@ class RaidPredictorTest extends FunSuite {
     eventStart = None,
     eventEnd = None,
     duration = Some(4),
+    rolePrefix = None,
     lastOccurrence = Some(OffsetDateTime.of(2025, 6, 8, 12, 0, 0, 0, ZoneOffset.UTC))
   )
 

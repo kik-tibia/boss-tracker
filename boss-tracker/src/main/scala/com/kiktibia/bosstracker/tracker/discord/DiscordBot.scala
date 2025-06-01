@@ -9,18 +9,16 @@ import cats.implicits.*
 import cats.syntax.all.*
 import com.kiktibia.bosstracker.config.Config
 import com.kiktibia.bosstracker.tracker.Model.*
-import com.kiktibia.bosstracker.tracker.service.obs.ObsModel.Raid
-import com.kiktibia.bosstracker.tracker.service.obs.ObsModel.RaidWithProbabilities
+import com.kiktibia.bosstracker.tracker.repo.BossTrackerRepo
 import com.kiktibia.bosstracker.tracker.repo.DiscordMessageDto
 import com.kiktibia.bosstracker.tracker.repo.RaidDto
-import io.circe.Error
+import com.kiktibia.bosstracker.tracker.service.obs.ObsModel.Raid
+import com.kiktibia.bosstracker.tracker.service.obs.ObsModel.RaidWithProbabilities
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.entities.MessageEmbed
-import org.typelevel.log4cats.Logger
-import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -30,15 +28,27 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.CompletableFuture
 import scala.jdk.CollectionConverters.*
-import scala.util.Try
-import net.dv8tion.jda.api.interactions.components.ActionRow
-import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu
-import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu.SelectTarget
 
-class DiscordBot(cfg: Config) {
+class DiscordBot(cfg: Config, repo: BossTrackerRepo) {
 
-  private val jda = JDABuilder.createDefault(cfg.bot.token).build()
-  jda.awaitReady()
+  private val createRolesCommand = new CreateRolesCommand(repo)
+  private val chooseRolesCommand = new ChooseRolesCommand
+  private val slashCommands = List(createRolesCommand, chooseRolesCommand)
+  private val buttonCommands = List(chooseRolesCommand)
+  private val interactionDispatcher = new InteractionDispatcher(
+    slashInteractions = slashCommands,
+    buttonInteractions = buttonCommands
+  )
+
+  private val jda = JDABuilder.createDefault(cfg.bot.token)
+    .addEventListeners(interactionDispatcher)
+    .build()
+    .awaitReady()
+
+  jda.updateCommands()
+    .addCommands(slashCommands.map(_.slashCommandData).asJava)
+    .queue()
+
   private val guilds: List[Guild] = jda.getGuilds().asScala.toList
   println(guilds.toString())
 
@@ -158,9 +168,9 @@ class DiscordBot(cfg: Config) {
   }
 
   def createOrUpdateEmbeds(
-      embed: MessageEmbed,
-      discordMessages: List[DiscordMessageDto],
-      additionalMessages: List[String] = Nil
+    embed: MessageEmbed,
+    discordMessages: List[DiscordMessageDto],
+    additionalMessages: List[String] = Nil
   ): IO[List[Message]] = {
     guilds
       .map { guild =>

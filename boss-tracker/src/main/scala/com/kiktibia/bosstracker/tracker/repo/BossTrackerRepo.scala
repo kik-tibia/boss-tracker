@@ -59,7 +59,7 @@ class BossTrackerRepo(tx: Transactor[IO]) {
           raid.raidTypeId match {
             case Some(rtId) =>
               sql"""
-              SELECT id, name, message, area, subarea, window_min, window_max, event_start, event_end, duration
+              SELECT id, name, message, area, subarea, window_min, window_max, event_start, event_end, duration, role_prefix
               FROM raid_type
               WHERE id = $rtId
             """.query[RaidTypeRow].option.transact(tx).map(rtOpt => Some((raid, rtOpt)))
@@ -108,6 +108,14 @@ class BossTrackerRepo(tx: Transactor[IO]) {
     """.query[RaidRow].option.transact(tx)
   }
 
+  def getRolePrefixes(): IO[List[String]] = {
+    sql"""
+    SELECT role_prefix
+    FROM raid_type
+    WHERE role_prefix IS NOT NULL
+    """.query[String].to[List].transact(tx)
+  }
+
   // Opens multiple connections for each uuid but there should never be more than 10 or 20
   def getRaids(uuids: List[UUID]): IO[List[RaidDto]] =
     uuids.traverse(getRaid).map(_.flatten)
@@ -127,6 +135,7 @@ class BossTrackerRepo(tx: Transactor[IO]) {
       rt.eventStart,
       rt.eventEnd,
       rt.duration,
+      rt.rolePrefix,
       None
     )
 

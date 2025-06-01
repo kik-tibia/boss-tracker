@@ -4,8 +4,8 @@ import cats.effect.*
 import cats.syntax.all.*
 import com.kiktibia.bosstracker.config.AppConfig
 import com.kiktibia.bosstracker.config.Config
-import com.kiktibia.bosstracker.tracker.repo.BossTrackerRepo
 import com.kiktibia.bosstracker.tracker.discord.*
+import com.kiktibia.bosstracker.tracker.repo.BossTrackerRepo
 import com.kiktibia.bosstracker.tracker.service.*
 import com.kiktibia.bosstracker.tracker.service.obs.*
 import doobie.util.transactor.Transactor
@@ -42,7 +42,7 @@ object Main extends IOApp {
     val fileIO = new FileIO(cfg)
     val fetcher = new BossDataFetcher(fileIO)
     val predictor = new BossPredictor(fileIO)
-    val discordBot = new DiscordBot(cfg)
+    val discordBot = new DiscordBot(cfg, repo)
     val bossTrackerService = new BossTrackerService(cfg, fileIO, fetcher, predictor, discordBot)
     val mwcService = new MwcService(fileIO, discordBot)
     val raidService = new RaidService(fileIO, discordBot, repo)
