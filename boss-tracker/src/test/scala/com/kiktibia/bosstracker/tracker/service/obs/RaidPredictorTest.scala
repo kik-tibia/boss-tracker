@@ -174,6 +174,25 @@ class RaidPredictorTest extends FunSuite {
     assertOptionDouble(chance, expected)
   }
 
+  test(
+    "instantaneous chance is calculated correctly for an event raid if the event is active and the first was missed"
+  ) {
+    val raidType =
+      defaultRaidTypeDto.copy(
+        windowMin = Some(1),
+        windowMax = Some(2),
+        eventStart = Some(LocalDate.of(2000, 6, 1)),
+        eventEnd = Some(LocalDate.of(2000, 7, 1)),
+        lastOccurrence = None,
+        duration = Some(1)
+      )
+    val raidStart = OffsetDateTime.of(2025, 6, 12, 22, 0, 0, 0, ZoneOffset.UTC)
+    val expected = Some(86400 * 2 - 7200)
+    val chance = RaidPredictor
+      .calculateInstantaneousChance(raidType, raidStart)
+    assertOptionDouble(chance, expected)
+  }
+
   test("instantaneous chance returns None for an event raid if the event is inactive") {
     val raidType =
       defaultRaidTypeDto.copy(

@@ -86,7 +86,15 @@ object RaidPredictor {
         ZonedDateTime.of(eventStart.withYear(raidStartZdt.getYear), LocalTime.of(10, 0), zone)
       val assumedWindowEnd = eventStartFull.plusDays((windowMax - windowMin + 1))
       val daysInWindow = ChronoUnit.DAYS.between(eventStartFull, assumedWindowEnd)
-      ChronoUnit.SECONDS.between(raidStartZdt, assumedWindowEnd) - (daysInWindow * maybeDuration.getOrElse(1) * 3600.0)
+      if (raidStartZdt.isBefore(assumedWindowEnd))
+        ChronoUnit.SECONDS.between(
+          raidStartZdt,
+          assumedWindowEnd
+        ) - (daysInWindow * maybeDuration.getOrElse(1) * 3600.0)
+      else ChronoUnit.SECONDS.between(
+        eventStartFull,
+        assumedWindowEnd
+      ) - (daysInWindow * maybeDuration.getOrElse(1) * 3600.0)
     }
 
     (c.lastOccurrence, c.windowMin, c.windowMax, c.duration, c.eventStart, c.eventEnd) match {

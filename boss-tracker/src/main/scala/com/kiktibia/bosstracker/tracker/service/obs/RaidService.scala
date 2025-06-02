@@ -64,7 +64,8 @@ class RaidService(
               candidates.map(c => RaidWithCandidates(raid, c))
             }.sequence
             raidsWithProbabilities = raidsWithCandidates.map(RaidPredictor.calculateProbabilities)
-            warnings = raidsWithProbabilities.flatMap(notableWarnings)
+            raidsToWarn = getRaidsToWarn(updatedRaids, raidsWithProbabilities)
+            warnings = raidsToWarn.flatMap(notableWarnings)
             alerts = updatedRaids.flatMap(notableAlert)
             _ = RaidPredictor.logProbabilities(raidsWithProbabilities)
             embed = discordBot.generateRaidEmbed(raidsWithProbabilities)
@@ -124,6 +125,32 @@ class RaidService(
         yield ()
       case _ => IO.unit
     }
+  }
+
+  private def getRaidsToWarn(
+    updatedRaids: List[RaidDto],
+    raidsWithProbabilities: List[RaidWithProbabilities]
+  ): List[RaidWithProbabilities] = {
+    val updatedAreas = updatedRaids.flatMap(_.area)
+    val updatedSubareas = updatedRaids.flatMap(_.subarea)
+    val updatedProbabilities =
+      raidsWithProbabilities.filter(rwp => updatedRaids.map(_.raidId).contains(rwp.raid.raidId))
+    val updatedAreasSubareas = raidsWithProbabilities.filter { rwp =>
+      rwp.raid.area.exists(a => updatedAreas.contains(a))
+      || rwp.raid.subarea.exists(a => updatedSubareas.contains(a))
+    }
+    val r = (updatedProbabilities ++ updatedAreasSubareas).distinct.sortBy(_.raid.startDate)
+    println("raids to warn")
+    println(updatedAreas)
+    println("---")
+    println(updatedSubareas)
+    println("---")
+    println(updatedProbabilities.map(_.raid))
+    println("---")
+    println(updatedAreasSubareas.map(_.raid))
+    println("---")
+    println(r.map(_.raid))
+    r
   }
 
   private def notableWarnings(raidWithProbabilities: RaidWithProbabilities): List[(String, String)] = {
