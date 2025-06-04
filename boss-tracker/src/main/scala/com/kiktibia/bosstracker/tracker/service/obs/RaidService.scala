@@ -178,9 +178,12 @@ class RaidService(
     // If it's less than 14 minutes and 55 seconds to the raid start and it still has no subarea in the OBS response,
     // change the subarea to the string "None", which is then specially handled in the database call to find raids with no subarea
     val obsRaidUpdated =
-      if (timeLeftToRaidStartFromObs < (15 * 60 - 5) && obsRaid.subareaName.isEmpty)
-        obsRaid.copy(subareaName = Some("None"))
-      else obsRaid
+      if (timeLeftToRaidStartFromObs < (15 * 60 - 5) && obsRaid.subareaName.isEmpty) {
+        // not sure if Nimmersatt is no area or ice islands in obs response, so convert no area to Ice Islands just in case
+        if (obsRaid.areaName == Some("Carlin"))
+          obsRaid.copy(subareaName = Some("Ice Islands"))
+        else obsRaid.copy(subareaName = Some("None"))
+      } else obsRaid
 
     maybeRaidDto match {
       case None =>
