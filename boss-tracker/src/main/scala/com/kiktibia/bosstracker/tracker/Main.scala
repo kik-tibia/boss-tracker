@@ -47,22 +47,31 @@ object Main extends IOApp {
     val mwcService = new MwcService(fileIO, discordBot)
     val raidService = new RaidService(fileIO, discordBot, repo)
 
-    Stream
+    val mainStream = Stream
       .fixedRateStartImmediately[IO](30.seconds)
       .evalTap { _ =>
-        println("Running stream")
         val today = LocalDate.now()
         val now = ZonedDateTime.now()
-        for
+        (for
           _ <- fileIO.updateBossStatsRepo()
           _ <- bossTrackerService.handleKilledBossUpdate(today)
           _ <- bossTrackerService.handlePredictionsUpdate(today, now)
           _ <- mwcService.checkForMwcUpdate()
-          _ <- raidService.checkForRaidUpdates()
-        yield ()
-      }
-      .compile
-      .drain
-      .map(_ => ExitCode.Success)
+        yield ())
+          .handleErrorWith { e =>
+            Logger[IO].warn(e)(s"Recovering from error in main stream:${System.lineSeparator}")
+          }
+      }.void
+
+    val raidStream = Stream
+      .fixedRateStartImmediately[IO](5.seconds)
+      .evalTap { _ =>
+        raidService.checkForRaidUpdates()
+          .handleErrorWith { e =>
+            Logger[IO].warn(e)(s"Recovering from error in raid stream:${System.lineSeparator}")
+          }
+      }.void
+
+    mainStream.merge(raidStream).compile.drain.map(_ => ExitCode.Success)
   }
 }
