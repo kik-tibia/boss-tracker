@@ -79,8 +79,8 @@ object RaidPredictor {
     def chanceForFirstInEvent(
       eventStart: LocalDate,
       maybeDuration: Option[Int],
-      windowMax: Int,
-      windowMin: Int
+      windowMin: Int,
+      windowMax: Int
     ): Double = {
       val eventStartFull =
         ZonedDateTime.of(eventStart.withYear(raidStartZdt.getYear), LocalTime.of(10, 0), zone)
@@ -97,6 +97,9 @@ object RaidPredictor {
       ) - (daysInWindow * maybeDuration.getOrElse(1) * 3600.0)
     }
 
+    def chanceForLostRaid(maybeDuration: Option[Int], windowMin: Int, windowMax: Int): Double =
+      (windowMin + windowMax).toDouble / 2 * (86400 - maybeDuration.getOrElse(1) * 3600)
+
     raidType match {
       // The raid type is an event raid but we are outside the event
       case HasEventWindow(eventStart, eventEnd) if !insideEvent(raidStartZdt, eventStart, eventEnd) => None
@@ -109,24 +112,21 @@ object RaidPredictor {
         val windowStart = ssOfLast.plusDays(windowMin)
         val windowEnd = ssOfLast.plusDays(windowMax + 1)
 
-        if (raidStartZdt.isBefore(windowStart) || raidStartZdt.isAfter(windowEnd)) {
+        if (raidStartZdt.isBefore(windowStart)) None
+        else if (raidStartZdt.isAfter(windowEnd)) {
           raidType.eventStart match {
-            case None => None
-            case Some(eventStart) =>
-              if (raidStartZdt.isAfter(windowEnd))
-                Some(chanceForFirstInEvent(eventStart, raidType.duration, windowMax, windowMin))
+            case Some(eventStart) => Some(chanceForFirstInEvent(eventStart, raidType.duration, windowMin, windowMax))
+            case None =>
+              if (raidStartZdt.isAfter(windowStart.plusDays(windowMin)))
+                Some(chanceForLostRaid(raidType.duration, windowMin, windowMax))
               else None
           }
-        } else {
-          Some(chanceForNormalRaid(lastZdt, raidType.duration, ssOfLast, windowEnd, windowStart))
-        }
+        } else Some(chanceForNormalRaid(lastZdt, raidType.duration, ssOfLast, windowEnd, windowStart))
       // The raid type has never occurred in database history
       case HasWindowButNoLastOccurrence(windowMin, windowMax) =>
         raidType.eventStart match {
-          case None =>
-            Some((windowMin + windowMax).toDouble / 2 * (86400 - raidType.duration.getOrElse(1) * 3600))
-          case Some(eventStart) =>
-            Some(chanceForFirstInEvent(eventStart, raidType.duration, windowMax, windowMin))
+          case Some(eventStart) => Some(chanceForFirstInEvent(eventStart, raidType.duration, windowMin, windowMax))
+          case None => Some(chanceForLostRaid(raidType.duration, windowMin, windowMax))
         }
       case _ => None
     }
