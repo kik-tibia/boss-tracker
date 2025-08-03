@@ -14,6 +14,8 @@ import java.time.OffsetDateTime
 
 object RaidPredictor {
 
+  case class RaidChance(chance: Double, isLost: Boolean = false)
+
   def calculateProbabilities(raid: RaidWithCandidates): RaidWithProbabilities = {
     val candidatesWithTimeLeft =
       raid.candidates.flatMap(c => calculateInstantaneousChance(c, raid.raid.startDate).map(i => (c, i)))
@@ -22,11 +24,11 @@ object RaidPredictor {
     // p_i is the instantaneous chance
     // P_i = p_i / (p_1 + p_2 + ... p_n)
     // And to avoid any issues with floating point precision for small numbers, we just multiply each p_i by a large number (timeSum)
-    val timeSum = candidatesWithTimeLeft.map(_._2).sum
-    val denominator = candidatesWithTimeLeft.map(c => timeSum / c._2).sum
+    val timeSum = candidatesWithTimeLeft.map(_._2.chance).sum
+    val denominator = candidatesWithTimeLeft.map(c => timeSum / c._2.chance).sum
     val probabilities = candidatesWithTimeLeft
-      .map { c =>
-        CandidateProbability(c._1, (timeSum / c._2) / denominator)
+      .map { case (raidType, raidChance) =>
+        CandidateProbability(raidType, (timeSum / raidChance.chance) / denominator, raidChance.isLost)
       }
       .sortBy(-_.probability)
     RaidWithProbabilities(raid.raid, probabilities)
@@ -37,7 +39,7 @@ object RaidPredictor {
     * happening in the first and last days of the window. Returns the reciprocal, e.g. a raid with 5% chance to occur in
     * the next second returns 20.
     */
-  def calculateInstantaneousChance(raidType: RaidTypeDto, raidStart: OffsetDateTime): Option[Double] = {
+  def calculateInstantaneousChance(raidType: RaidTypeDto, raidStart: OffsetDateTime): Option[RaidChance] = {
     val raidStartZdt: ZonedDateTime = raidStart.toInstant.atZone(zone)
     val currentSS: ZonedDateTime = zdtToSS(raidStartZdt)
 
@@ -115,18 +117,20 @@ object RaidPredictor {
         if (raidStartZdt.isBefore(windowStart)) None
         else if (raidStartZdt.isAfter(windowEnd)) {
           raidType.eventStart match {
-            case Some(eventStart) => Some(chanceForFirstInEvent(eventStart, raidType.duration, windowMin, windowMax))
+            case Some(eventStart) =>
+              Some(RaidChance(chanceForFirstInEvent(eventStart, raidType.duration, windowMin, windowMax)))
             case None =>
               if (raidStartZdt.isAfter(windowStart.plusDays(windowMin)))
-                Some(chanceForLostRaid(raidType.duration, windowMin, windowMax))
+                Some(RaidChance(chanceForLostRaid(raidType.duration, windowMin, windowMax), isLost = true))
               else None
           }
-        } else Some(chanceForNormalRaid(lastZdt, raidType.duration, ssOfLast, windowEnd, windowStart))
+        } else Some(RaidChance(chanceForNormalRaid(lastZdt, raidType.duration, ssOfLast, windowEnd, windowStart)))
       // The raid type has never occurred in database history
       case HasWindowButNoLastOccurrence(windowMin, windowMax) =>
         raidType.eventStart match {
-          case Some(eventStart) => Some(chanceForFirstInEvent(eventStart, raidType.duration, windowMin, windowMax))
-          case None => Some(chanceForLostRaid(raidType.duration, windowMin, windowMax))
+          case Some(eventStart) =>
+            Some(RaidChance(chanceForFirstInEvent(eventStart, raidType.duration, windowMin, windowMax)))
+          case None => Some(RaidChance(chanceForLostRaid(raidType.duration, windowMin, windowMax), isLost = true))
         }
       case _ => None
     }

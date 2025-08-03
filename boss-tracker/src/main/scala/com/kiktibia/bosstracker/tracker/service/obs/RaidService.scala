@@ -131,8 +131,8 @@ class RaidService(
     updatedRaids: List[RaidDto],
     raidsWithProbabilities: List[RaidWithProbabilities]
   ): List[RaidWithProbabilities] = {
-    val updatedAreas = updatedRaids.flatMap(_.area)
-    val updatedSubareas = updatedRaids.flatMap(_.subarea)
+    val updatedAreas = updatedRaids.filter(_.raidType.isDefined).flatMap(_.area)
+    val updatedSubareas = updatedRaids.filter(_.raidType.isDefined).flatMap(_.subarea)
     val updatedProbabilities =
       raidsWithProbabilities.filter(rwp => updatedRaids.map(_.raidId).contains(rwp.raid.raidId))
     val updatedAreasSubareas = raidsWithProbabilities.filter { rwp =>

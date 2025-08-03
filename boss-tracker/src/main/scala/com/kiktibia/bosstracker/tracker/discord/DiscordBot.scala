@@ -156,7 +156,10 @@ class DiscordBot(cfg: Config, repo: BossTrackerRepo) {
             s"${startTime}\n${raidType.message}"
           case None =>
             val predictionString =
-              probabilities.map(p => f"`${p.probability * 100}%.2f%%` ${p.raidType.name}").mkString("\n")
+              probabilities.map { p =>
+                val isLostString = if (p.isLost) " (lost)" else ""
+                f"`${p.probability * 100}%.2f%%$isLostString` ${p.raidType.name}"
+              }.mkString("\n")
             s"${startTime}\nArea: ${raid.area
                 .getOrElse("Not announced")}\nSubarea: ${raid.subarea.getOrElse("Not announced")}\n$predictionString"
         }

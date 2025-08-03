@@ -9,15 +9,15 @@ import java.util.UUID
 object ObsModel {
 
   case class Raid(
-      raidId: UUID,
-      raidTypeId: Int,
-      announcementDate: ZonedDateTime,
-      startDate: ZonedDateTime,
-      category: String,
-      worldName: String,
-      areaName: Option[String],
-      subareaName: Option[String],
-      ruleIds: List[String]
+    raidId: UUID,
+    raidTypeId: Int,
+    announcementDate: ZonedDateTime,
+    startDate: ZonedDateTime,
+    category: String,
+    worldName: String,
+    areaName: Option[String],
+    subareaName: Option[String],
+    ruleIds: List[String]
   )
 
   object Raid {
@@ -34,17 +34,18 @@ object ObsModel {
   }
 
   case class RaidWithCandidates(
-      raid: RaidDto,
-      candidates: List[RaidTypeDto]
+    raid: RaidDto,
+    candidates: List[RaidTypeDto]
   )
 
   case class CandidateProbability(
-      raidType: RaidTypeDto,
-      probability: Double
+    raidType: RaidTypeDto,
+    probability: Double,
+    isLost: Boolean
   )
 
   case class RaidWithProbabilities(
-      raid: RaidDto,
-      probabilities: List[CandidateProbability]
+    raid: RaidDto,
+    probabilities: List[CandidateProbability]
   )
 }

@@ -78,7 +78,7 @@ class RaidPredictorTest extends FunSuite {
     val raidStart = OffsetDateTime.of(2025, 6, 18, 22, 0, 0, 0, ZoneOffset.UTC)
     val expected = Some(3600 * 6)
     val chance = RaidPredictor
-      .calculateInstantaneousChance(raidType, raidStart)
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble(chance, expected)
   }
 
@@ -88,7 +88,7 @@ class RaidPredictorTest extends FunSuite {
     val raidStart = OffsetDateTime.of(2025, 6, 18, 22, 0, 0, 0, ZoneOffset.UTC)
     val expected = Some(3600 * 6 + 3600 * 20 + 3600 * 20 / 4)
     val chance = RaidPredictor
-      .calculateInstantaneousChance(raidType, raidStart)
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble(chance, expected)
   }
 
@@ -98,7 +98,7 @@ class RaidPredictorTest extends FunSuite {
     val raidStart = OffsetDateTime.of(2025, 6, 15, 22, 0, 0, 0, ZoneOffset.UTC)
     val expected = Some((3600 * 6 + 3600 * 20 * 4 + 3600 * 20 / 4) / 0.75)
     val chance = RaidPredictor
-      .calculateInstantaneousChance(raidType, raidStart)
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble(chance, expected)
   }
 
@@ -112,7 +112,7 @@ class RaidPredictorTest extends FunSuite {
     val raidStart = OffsetDateTime.of(2025, 6, 15, 22, 0, 0, 0, ZoneOffset.UTC)
     val expected = Some(3600 * 6)
     val chance = RaidPredictor
-      .calculateInstantaneousChance(raidType, raidStart)
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble(chance, expected)
   }
 
@@ -130,7 +130,7 @@ class RaidPredictorTest extends FunSuite {
     val raidStart = OffsetDateTime.of(2025, 6, 10, 22, 0, 0, 0, ZoneOffset.UTC)
     val expected = None
     val chance = RaidPredictor
-      .calculateInstantaneousChance(raidType, raidStart)
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble[Double](chance, expected)
   }
 
@@ -140,7 +140,7 @@ class RaidPredictorTest extends FunSuite {
     val raidStart = OffsetDateTime.of(2025, 6, 19, 6, 0, 0, 0, ZoneOffset.UTC)
     val expected = None
     val chance = RaidPredictor
-      .calculateInstantaneousChance(raidType, raidStart)
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble[Double](chance, expected)
   }
 
@@ -154,7 +154,7 @@ class RaidPredictorTest extends FunSuite {
     val raidStart = OffsetDateTime.of(2025, 6, 15, 22, 0, 0, 0, ZoneOffset.UTC)
     val expected = Some(3600 * 20 * 7)
     val chance = RaidPredictor
-      .calculateInstantaneousChance(raidType, raidStart)
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble(chance, expected)
   }
 
@@ -171,7 +171,7 @@ class RaidPredictorTest extends FunSuite {
     val raidStart = OffsetDateTime.of(2025, 6, 12, 22, 0, 0, 0, ZoneOffset.UTC)
     val expected = Some(3600 * 9)
     val chance = RaidPredictor
-      .calculateInstantaneousChance(raidType, raidStart)
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble(chance, expected)
   }
 
@@ -190,7 +190,7 @@ class RaidPredictorTest extends FunSuite {
     val raidStart = OffsetDateTime.of(2025, 6, 12, 22, 0, 0, 0, ZoneOffset.UTC)
     val expected = Some(86400 * 2 - 7200)
     val chance = RaidPredictor
-      .calculateInstantaneousChance(raidType, raidStart)
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble(chance, expected)
   }
 
@@ -207,7 +207,7 @@ class RaidPredictorTest extends FunSuite {
     val raidStart = OffsetDateTime.of(2025, 6, 12, 22, 0, 0, 0, ZoneOffset.UTC)
     val expected = None
     val chance = RaidPredictor
-      .calculateInstantaneousChance(raidType, raidStart)
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble[Double](chance, expected)
   }
 
@@ -224,7 +224,7 @@ class RaidPredictorTest extends FunSuite {
     val raidStart = OffsetDateTime.of(2025, 6, 1, 22, 0, 0, 0, ZoneOffset.UTC)
     val expected = Some(3600 * 9 + 3600 * 23)
     val chance = RaidPredictor
-      .calculateInstantaneousChance(raidType, raidStart)
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble(chance, expected)
   }
 
@@ -241,7 +241,7 @@ class RaidPredictorTest extends FunSuite {
     val raidStart = OffsetDateTime.of(2025, 6, 1, 22, 0, 0, 0, ZoneOffset.UTC)
     val expected = Some(3600 * 9 + 3600 * 23)
     val chance = RaidPredictor
-      .calculateInstantaneousChance(raidType, raidStart)
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble(chance, expected)
   }
 
@@ -256,7 +256,7 @@ class RaidPredictorTest extends FunSuite {
     val raidStart = OffsetDateTime.of(2025, 6, 20, 16, 0, 0, 0, ZoneOffset.UTC)
     val expected = Some((86400 - 3600) * 9)
     val chance = RaidPredictor
-      .calculateInstantaneousChance(raidType, raidStart)
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble(chance, expected)
   }
 
@@ -273,7 +273,7 @@ class RaidPredictorTest extends FunSuite {
     val raidStart = OffsetDateTime.of(2025, 6, 15, 16, 0, 0, 0, ZoneOffset.UTC)
     val expected = None
     val chance = RaidPredictor
-      .calculateInstantaneousChance(raidType, raidStart)
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble[Double](chance, expected)
   }
 
