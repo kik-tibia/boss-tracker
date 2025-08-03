@@ -144,14 +144,15 @@ class RaidPredictorTest extends FunSuite {
     assertOptionDouble[Double](chance, expected)
   }
 
-  test("instantaneous chance is just zero to max window for raids that have no recorded history") {
+  test("instantaneous chance is just zero to average window for raids that have no recorded history") {
     val raidType =
       defaultRaidTypeDto.copy(
+        windowMin = Some(4),
         windowMax = Some(10),
         lastOccurrence = None
       )
     val raidStart = OffsetDateTime.of(2025, 6, 15, 22, 0, 0, 0, ZoneOffset.UTC)
-    val expected = Some(3600 * 20 * 10)
+    val expected = Some(3600 * 20 * 7)
     val chance = RaidPredictor
       .calculateInstantaneousChance(raidType, raidStart)
     assertOptionDouble(chance, expected)

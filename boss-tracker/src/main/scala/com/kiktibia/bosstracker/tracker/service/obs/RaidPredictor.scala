@@ -37,7 +37,7 @@ object RaidPredictor {
     * happening in the first and last days of the window. Returns the reciprocal, e.g. a raid with 5% chance to occur in
     * the next second returns 20.
     */
-  def calculateInstantaneousChance(c: RaidTypeDto, raidStart: OffsetDateTime): Option[Double] = {
+  def calculateInstantaneousChance(raidType: RaidTypeDto, raidStart: OffsetDateTime): Option[Double] = {
     val raidStartZdt: ZonedDateTime = raidStart.toInstant.atZone(zone)
     val currentSS: ZonedDateTime = zdtToSS(raidStartZdt)
 
@@ -97,35 +97,36 @@ object RaidPredictor {
       ) - (daysInWindow * maybeDuration.getOrElse(1) * 3600.0)
     }
 
-    (c.lastOccurrence, c.windowMin, c.windowMax, c.duration, c.eventStart, c.eventEnd) match {
-      case (_, _, _, _, Some(eventStart), Some(eventEnd))
-          if !insideEvent(raidStartZdt, eventStart, eventEnd) => None
-      case (_, _, _, Some(duration), _, _)
-          if ChronoUnit.HOURS.between(raidStartZdt, currentSS.plusDays(1)) < duration => None
-      case (Some(lastOccurrence), Some(windowMin), Some(windowMax), maybeDuration, _, _) =>
+    raidType match {
+      // The raid type is an event raid but we are outside the event
+      case HasEventWindow(eventStart, eventEnd) if !insideEvent(raidStartZdt, eventStart, eventEnd) => None
+      // The raid type has a duration but the time is too close to SS for it to occur
+      case HasDuration(duration) if ChronoUnit.HOURS.between(raidStartZdt, currentSS.plusDays(1)) < duration => None
+      // The raid type might be possible to occur, calculate the chance
+      case HasLastOccurrenceAndWindow(lastOccurrence, windowMin, windowMax) =>
         val lastZdt = lastOccurrence.toInstant.atZone(zone)
         val ssOfLast = zdtToSS(lastZdt)
         val windowStart = ssOfLast.plusDays(windowMin)
         val windowEnd = ssOfLast.plusDays(windowMax + 1)
 
         if (raidStartZdt.isBefore(windowStart) || raidStartZdt.isAfter(windowEnd)) {
-          c.eventStart match {
+          raidType.eventStart match {
             case None => None
             case Some(eventStart) =>
               if (raidStartZdt.isAfter(windowEnd))
-                Some(chanceForFirstInEvent(eventStart, maybeDuration, windowMax, windowMin))
+                Some(chanceForFirstInEvent(eventStart, raidType.duration, windowMax, windowMin))
               else None
           }
         } else {
-          Some(chanceForNormalRaid(lastZdt, maybeDuration, ssOfLast, windowEnd, windowStart))
+          Some(chanceForNormalRaid(lastZdt, raidType.duration, ssOfLast, windowEnd, windowStart))
         }
-      case (None, Some(windowMin), Some(windowMax), maybeDuration, _, _) =>
-        // Raid has never occurred in database history
-        c.eventStart match {
+      // The raid type has never occurred in database history
+      case HasWindowButNoLastOccurrence(windowMin, windowMax) =>
+        raidType.eventStart match {
           case None =>
-            Some(windowMax.toDouble * (86400 - maybeDuration.getOrElse(1) * 3600))
+            Some((windowMin + windowMax).toDouble / 2 * (86400 - raidType.duration.getOrElse(1) * 3600))
           case Some(eventStart) =>
-            Some(chanceForFirstInEvent(eventStart, maybeDuration, windowMax, windowMin))
+            Some(chanceForFirstInEvent(eventStart, raidType.duration, windowMax, windowMin))
         }
       case _ => None
     }
@@ -145,5 +146,33 @@ object RaidPredictor {
     val zonedEventStart = ZonedDateTime.of(eventStart.withYear(start.getYear), LocalTime.of(10, 0), zone)
     val zonedEventEnd = ZonedDateTime.of(eventEnd.withYear(start.getYear), LocalTime.of(10, 0), zone)
     !start.isBefore(zonedEventStart) && !start.isAfter(zonedEventEnd)
+  }
+
+  private object HasEventWindow {
+    def unapply(raidType: RaidTypeDto): Option[(LocalDate, LocalDate)] =
+      for
+        eventStart <- raidType.eventStart
+        eventEnd <- raidType.eventEnd
+      yield (eventStart, eventEnd)
+  }
+  private object HasDuration {
+    def unapply(raidType: RaidTypeDto): Option[Int] =
+      raidType.duration
+  }
+  private object HasLastOccurrenceAndWindow {
+    def unapply(raidType: RaidTypeDto): Option[(OffsetDateTime, Int, Int)] =
+      for
+        lastOccurrence <- raidType.lastOccurrence
+        windowMin <- raidType.windowMin
+        windowMax <- raidType.windowMax
+      yield (lastOccurrence, windowMin, windowMax)
+  }
+  private object HasWindowButNoLastOccurrence {
+    def unapply(raidType: RaidTypeDto): Option[(Int, Int)] =
+      for
+        windowMin <- raidType.windowMin
+        windowMax <- raidType.windowMax
+        if raidType.lastOccurrence.isEmpty
+      yield (windowMin, windowMax)
   }
 }
