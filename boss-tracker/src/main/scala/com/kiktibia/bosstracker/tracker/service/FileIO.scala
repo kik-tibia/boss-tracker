@@ -161,13 +161,18 @@ class FileIO(cfg: Config) extends CirceCodecs {
 
   private def getAllStatsFiles(): IO[List[Path]] = IO.blocking {
     val path = Paths.get(cfg.file.statsRepoPath, "data", cfg.general.world)
+    val archivePath = Paths.get(cfg.file.archivedStatsRepoPath)
+    val archivedDataFiles = pathToList(archivePath).flatMap { archive =>
+      pathToList(archive.resolve("data").resolve(cfg.general.world))
+    }
     val missingDataPath = Paths.get(cfg.file.missingDataPath, cfg.general.world)
-    val dataFiles = pathToList(path)
+    val currentDataFiles = pathToList(path)
+    val allDataFiles = currentDataFiles ::: archivedDataFiles
     val missingDataFiles = pathToList(missingDataPath).filterNot { p =>
       // Don't use mising data file if tibia kill stats file exists of the same date
-      dataFiles.map(_.getFileName()).contains(p.getFileName())
+      allDataFiles.map(_.getFileName()).contains(p.getFileName())
     }
-    (dataFiles ::: missingDataFiles)
+    (allDataFiles ::: missingDataFiles)
       .filterNot(p => p.toFile.getName == "latest.json")
   }
 
