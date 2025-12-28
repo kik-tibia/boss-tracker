@@ -45,6 +45,26 @@ class RaidPredictorTest extends FunSuite {
     assertEquals(result.probabilities.map(_.probability), List(1.0))
   }
 
+  test("one high chance candidate and one no chance returns 1.0 probability for the high chance") {
+    val candidates = List(
+      defaultRaidTypeDto.copy(name = "Raid 1",
+        lastOccurrence = Some(OffsetDateTime.of(2025, 6, 14, 12, 0, 0, 0, ZoneOffset.UTC))),
+      defaultRaidTypeDto.copy(name = "Raid 2")
+    )
+    val rwc = RaidWithCandidates(defaultRaidDto, candidates)
+    val result = RaidPredictor.calculateProbabilities(rwc)
+    assertEquals(result.probabilities.map(_.probability), List(1.0))
+  }
+
+  test("one no chance still returns 1.0 prbability") {
+    val candidates = List(
+      defaultRaidTypeDto.copy( lastOccurrence = Some(OffsetDateTime.of(2025, 6, 14, 12, 0, 0, 0, ZoneOffset.UTC))),
+    )
+    val rwc = RaidWithCandidates(defaultRaidDto, candidates)
+    val result = RaidPredictor.calculateProbabilities(rwc)
+    assertEquals(result.probabilities.map(_.probability), List(1.0))
+  }
+
   test("two identical candidates return 0.5 probability each") {
     val candidates = List(
       defaultRaidTypeDto.copy(name = "Raid 1"),

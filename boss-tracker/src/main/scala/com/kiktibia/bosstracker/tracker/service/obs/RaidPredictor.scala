@@ -31,7 +31,11 @@ object RaidPredictor {
         CandidateProbability(raidType, (timeSum / raidChance.chance) / denominator, raidChance.isLost)
       }
       .sortBy(-_.probability)
-    RaidWithProbabilities(raid.raid, probabilities)
+    // Special case to ensure we still alert if a subarea is revealed, only one raid exists for that subarea, but it's no chance for some reason
+    if (raid.candidates.length == 1 && probabilities.isEmpty)
+      RaidWithProbabilities(raid.raid, raid.candidates.map(c => CandidateProbability(c, 1, true)))
+    else
+      RaidWithProbabilities(raid.raid, probabilities)
   }
 
   /** Calculates the instantaneous chance of this raid happening in the next second. This is typically just the number
