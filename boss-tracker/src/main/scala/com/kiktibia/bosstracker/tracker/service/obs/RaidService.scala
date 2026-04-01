@@ -90,6 +90,14 @@ class RaidService(
     if (now.isBefore(t)) t.minusDays(1).toOffsetDateTime() else t.toOffsetDateTime()
   }
 
+  // eventStart is from the database and has a meaningless year (set to 2000 or something)
+  // This method returns a full eventStart date with the year set correctly, given the SS date of a raid
+  private def getFullEventStartDate(raidSS: LocalDate, eventStart: LocalDate): LocalDate = {
+    val withYear = eventStart.withYear(raidSS.getYear())
+    if (withYear.isAfter(raidSS)) withYear.minusYears(1)
+    else withYear
+  }
+
   private def checkIfMetadataCorrect(raid: RaidDto): IO[Unit] = {
     val raidStart = raid.startDate.toInstant.atZone(zone)
     raid.raidType match {
@@ -101,14 +109,23 @@ class RaidService(
               val previousRaidSS = zdtToSS(previousRaid.startDate.toInstant.atZone(zone)).toLocalDate
               val thisRaidSS = zdtToSS(raidStart).toLocalDate
               val interval = ChronoUnit.DAYS.between(previousRaidSS, thisRaidSS)
+
               (raidType.windowMin, raidType.windowMax) match {
                 case (Some(windowMin), Some(windowMax)) =>
-                  if (interval < windowMin || interval > windowMax)
+                  val sameEvent = raidType.eventStart match {
+                    case Some(eventStart) =>
+                      val previousRaidEventStart = getFullEventStartDate(previousRaidSS, eventStart)
+                      val thisRaidEventStart = getFullEventStartDate(thisRaidSS, eventStart)
+                      previousRaidEventStart == thisRaidEventStart
+                    case None => true
+                  }
+                  if ((interval < windowMin || interval > windowMax) && sameEvent)
                     discordBot.sendRaidMessage(
-                      s"Raid `${raidType.name}` (ID `${raid.raidId}`) occurred after an interval of $interval days. Current window for this raid type is set to $windowMin - $windowMax days. Consider updating the raid type metadata."
+                      s"Raid `${raidType.name}` (ID `${raid.raidId}`, raid type ID `${raidType.id}`) occurred after an interval of $interval days. Current window for this raid type is set to $windowMin - $windowMax days. Consider updating the raid type metadata."
                     )
                 case _ => ()
               }
+
               IO.unit
             case None => IO.unit
           }
