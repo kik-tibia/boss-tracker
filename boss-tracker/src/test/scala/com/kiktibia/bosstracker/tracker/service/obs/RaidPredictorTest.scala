@@ -312,6 +312,21 @@ class RaidPredictorTest extends FunSuite {
     assertOptionDouble(chance, expected)
   }
 
+  test("instantaneous chance is calculated correctly for a raid with a windowMin of 0") {
+    val raidType =
+      defaultRaidTypeDto.copy(
+        windowMin = Some(0),
+        windowMax = Some(2),
+        lastOccurrence = Some(OffsetDateTime.of(2025, 6, 2, 20, 0, 0, 0, ZoneOffset.UTC)),
+        duration = Some(1)
+      )
+    val raidStart = OffsetDateTime.of(2025, 6, 3, 8, 0, 0, 0, ZoneOffset.UTC)
+    val expected = Some((86400 - 3600) * 1.5)
+    val chance = RaidPredictor
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
+    assertOptionDouble(chance, expected)
+  }
+
   private def assertOptionDouble[T: Numeric](obtained: Option[Double], expected: Option[T]) = {
     val num = implicitly[Numeric[T]]
     (obtained, expected.map(num.toDouble)) match {
