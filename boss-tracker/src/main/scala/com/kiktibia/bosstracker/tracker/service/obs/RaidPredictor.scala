@@ -68,15 +68,12 @@ object RaidPredictor {
       // The following statement takes this into account
       val weightedSecondsInWindow =
         if (currentSS.plusDays(1) == windowEnd) secondsInWindow
-        else {
-          val weightedEndSecondsInWindow =
-            secondsInWindow - (1 - lastRaidFractionIntoDay) * (86400 - maybeDuration.getOrElse(1) * 3600)
-          if (currentSS == windowStart) {
-            weightedEndSecondsInWindow / (1 - lastRaidFractionIntoDay)
+        else if (currentSS == windowStart) {
+            (secondsInWindow - (86400 - maybeDuration.getOrElse(1) * 3600)) / (1 - lastRaidFractionIntoDay)
           } else {
-            weightedEndSecondsInWindow
+            secondsInWindow - (1 - lastRaidFractionIntoDay) * (86400 - maybeDuration.getOrElse(1) * 3600)
           }
-        }
+        
       weightedSecondsInWindow
     }
 

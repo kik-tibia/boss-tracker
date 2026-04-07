@@ -116,7 +116,7 @@ class RaidPredictorTest extends FunSuite {
     val raidType =
       defaultRaidTypeDto.copy(lastOccurrence = Some(OffsetDateTime.of(2025, 6, 10, 14, 0, 0, 0, ZoneOffset.UTC)))
     val raidStart = OffsetDateTime.of(2025, 6, 15, 22, 0, 0, 0, ZoneOffset.UTC)
-    val expected = Some((3600 * 6 + 3600 * 20 * 4 + 3600 * 20 / 4) / 0.75)
+    val expected = Some((3600 * 6 + 3600 * 20 * 4) / 0.75)
     val chance = RaidPredictor
       .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
     assertOptionDouble(chance, expected)
@@ -297,6 +297,21 @@ class RaidPredictorTest extends FunSuite {
     assertOptionDouble[Double](chance, expected)
   }
 
+  test("instantaneous chance is calculated correctly for a raid with a two day window") {
+    val raidType =
+      defaultRaidTypeDto.copy(
+        windowMin = Some(1),
+        windowMax = Some(2),
+        lastOccurrence = Some(OffsetDateTime.of(2025, 6, 2, 20, 0, 0, 0, ZoneOffset.UTC)),
+        duration = Some(1)
+      )
+    val raidStart = OffsetDateTime.of(2025, 6, 3, 8, 0, 0, 0, ZoneOffset.UTC)
+    val expected = Some((86400 - 3600) * 2)
+    val chance = RaidPredictor
+      .calculateInstantaneousChance(raidType, raidStart).map(_.chance)
+    assertOptionDouble(chance, expected)
+  }
+
   private def assertOptionDouble[T: Numeric](obtained: Option[Double], expected: Option[T]) = {
     val num = implicitly[Numeric[T]]
     (obtained, expected.map(num.toDouble)) match {
@@ -305,4 +320,5 @@ class RaidPredictorTest extends FunSuite {
       case _ => fail(s"Expected $expected, got $obtained")
     }
   }
+
 }
