@@ -116,6 +116,7 @@ object RaidPredictor {
         val windowEnd = ssOfLast.plusDays(windowMax + 1)
 
         if (raidStartZdt.isBefore(windowStart)) None
+        else if (ssOfLast == currentSS) None
         else if (raidStartZdt.isAfter(windowEnd)) {
           raidType.eventStart match {
             case Some(eventStart) =>
