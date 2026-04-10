@@ -1,5 +1,6 @@
-ThisBuild / version := "5.5.1"
+import com.typesafe.sbt.packager.docker.Cmd
 
+ThisBuild / version := "5.5.2"
 ThisBuild / scalaVersion := "3.7.0"
 
 name := "boss-tracker"
@@ -7,6 +8,13 @@ name := "boss-tracker"
 enablePlugins(DockerPlugin)
 enablePlugins(JavaAppPackaging)
 dockerExposedPorts += 443
+dockerCommands ++= Seq(
+  Cmd("USER", "root"),
+  Cmd("RUN", "apt-get update && apt-get install -y --no-install-recommends libjemalloc2 && rm -rf /var/lib/apt/lists/*"),
+  Cmd("ENV", "LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"),
+  Cmd("USER", "demiourgos728")
+)
+
 Compile / mainClass := Some("com.kiktibia.bosstracker.tracker.Main")
 
 scalacOptions ++= Seq(
