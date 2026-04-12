@@ -1,6 +1,6 @@
 import com.typesafe.sbt.packager.docker.Cmd
 
-ThisBuild / version := "5.5.2"
+ThisBuild / version := "5.5.3"
 ThisBuild / scalaVersion := "3.7.0"
 
 name := "boss-tracker"

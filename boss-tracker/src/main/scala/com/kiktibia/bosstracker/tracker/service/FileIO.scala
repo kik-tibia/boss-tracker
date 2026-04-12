@@ -16,15 +16,15 @@ import io.circe.parser.*
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import scala.io.Source
 import scala.jdk.CollectionConverters.*
-
-import sys.process.*
-import java.time.Instant
+import scala.sys.process.*
+import scala.util.Using
 
 class FileIO(cfg: Config) extends CirceCodecs {
 
@@ -152,11 +152,7 @@ class FileIO(cfg: Config) extends CirceCodecs {
   }
 
   private def pathToList(path: Path): List[Path] = {
-    Files
-      .list(path)
-      .iterator()
-      .asScala
-      .toList
+    Using.resource(Files.list(path))(_.iterator().asScala.toList)
   }
 
   private def getAllStatsFiles(): IO[List[Path]] = IO.blocking {
