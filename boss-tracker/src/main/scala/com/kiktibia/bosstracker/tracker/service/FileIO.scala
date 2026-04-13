@@ -9,6 +9,7 @@ import com.kiktibia.bosstracker.tracker.CirceCodecs
 import com.kiktibia.bosstracker.tracker.Model.BossList
 import com.kiktibia.bosstracker.tracker.Model.DateInfo
 import com.kiktibia.bosstracker.tracker.Model.KillStatsDay
+import fs2.Stream
 import io.circe.*
 import io.circe.generic.auto.*
 import io.circe.parser.*
@@ -54,13 +55,14 @@ class FileIO(cfg: Config) extends CirceCodecs {
   }
 
   def parseAllHistoricStats(bossList: BossList): IO[List[KillStatsDay]] = {
-    getAllStatsFiles().map(
-      _.map(f => new String(Files.readAllBytes(f)))
-        .map { s =>
-          parser.decode[KillStatsDay](s).map(ksd => removeIrrelevantEntries(ksd, bossList))
-        }
-        .flatMap(_.toOption)
-    )
+    getAllStatsFiles().flatMap { files =>
+      Stream.emits(files)
+        .evalMap(f => IO.blocking(new String(Files.readAllBytes(f))))
+        .map(parser.decode[KillStatsDay])
+        .collect { case Right(ksd) => removeIrrelevantEntries(ksd, bossList) }
+        .compile
+        .toList
+    }
   }
 
   def getDateInfo(): EitherT[IO, Error, DateInfo] = {
